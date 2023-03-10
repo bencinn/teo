@@ -11,7 +11,6 @@ struct Args {
     /// Read from <FILE_NAME>
     #[arg(short, long, default_value = "main.teo")]
     file_name: String,
-    
 }
 
 fn main() {
