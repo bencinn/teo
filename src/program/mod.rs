@@ -9,7 +9,16 @@ pub struct Program {
 impl Program {
     pub fn run_command(self: Program) -> Self {
         if let Some(current_command) = self.commands.get(self.current_line) {
-            println!("{}", current_command.commands_name);
+            match current_command.commands_name.as_str() {
+                "print" => {
+                    for i in &current_command.commands_param {
+                        println!("{}", i);
+                    }
+                }
+                _ => {
+                    println!("Command not exist: {}", current_command.commands_name);
+                }
+            }
             Program {
                 commands: self.commands,
                 current_line: self.current_line + 1, // Increment current_line after executing the command
