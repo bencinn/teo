@@ -104,4 +104,50 @@ mod program {
         program.run_loop();
         assert!(true);
     }
+    #[test]
+    fn test_program_print_command() {
+        let command = Commands::new("print".to_owned(), "Hello, world!".to_owned());
+        let mut vec_commands: Vec<Commands> = Vec::new();
+        vec_commands.push(command);
+        let program: Program = Program {
+            commands: vec_commands,
+            current_line: 0,
+            panic: false,
+        };
+        let result = program.run_loop();
+        assert_eq!(result.panic, false);
+        assert_eq!(result.current_line, 1);
+    }
+
+    #[test]
+    fn test_program_multiple_print_commands() {
+        let command1 = Commands::new("print".to_owned(), "Hello".to_owned());
+        let command2 = Commands::new("print".to_owned(), "world!".to_owned());
+        let mut vec_commands: Vec<Commands> = Vec::new();
+        vec_commands.push(command1);
+        vec_commands.push(command2);
+        let program: Program = Program {
+            commands: vec_commands,
+            current_line: 0,
+            panic: false,
+        };
+        let result = program.run_loop();
+        assert_eq!(result.panic, false);
+        assert_eq!(result.current_line, 2);
+    }
+
+    #[test]
+    fn test_program_empty_print_command() {
+        let command = Commands::new("print".to_owned(), "".to_owned());
+        let mut vec_commands: Vec<Commands> = Vec::new();
+        vec_commands.push(command);
+        let program: Program = Program {
+            commands: vec_commands,
+            current_line: 0,
+            panic: false,
+        };
+        let result = program.run_loop();
+        assert_eq!(result.panic, false);
+        assert_eq!(result.current_line, 1);
+    }
 }
