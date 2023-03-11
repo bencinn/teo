@@ -12,7 +12,8 @@ impl Program {
             match current_command.commands_name.as_str() {
                 "print" => {
                     for i in &current_command.commands_param {
-                        writeln!(writer, "{}", i);
+                        writeln!(writer, "{}", i).unwrap();
+                        println!("{}", i);
                     }
                 }
                 _ => {
@@ -20,7 +21,9 @@ impl Program {
                         writer,
                         "Command not exist: {}",
                         current_command.commands_name
-                    );
+                    )
+                    .unwrap();
+                    println!("Command not exist: {}", current_command.commands_name);
                 }
             }
             self.current_line += 1;

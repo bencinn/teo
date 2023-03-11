@@ -9,8 +9,11 @@ impl Commands {
     pub fn new(name: String, param: String) -> Self {
         let mut commands_vec = Vec::new();
         let mut buf: String = String::new();
+        let mut in_quotes = false;
         for c in param.chars() {
-            if c == ',' {
+            if c == '"' {
+                in_quotes = !in_quotes;
+            } else if c == ',' && !in_quotes {
                 commands_vec.push(buf.trim().to_owned());
                 buf.clear();
             } else {
@@ -108,6 +111,26 @@ mod test_commands {
                 actual_param, expected_param
             );
         }
+    }
+    #[test]
+    fn test_new_command_double_quotes() {
+        let name = String::from("test");
+        let param = String::from("\"param1, param2\", param3");
+
+        let command = Commands::new(name.clone(), param.clone());
+        let expected = Commands {
+            commands_name: name,
+            commands_param: vec![String::from("param1, param2"), String::from("param3")],
+        };
+
+        assert_eq!(
+            command.commands_name, expected.commands_name,
+            "Command name should matched"
+        );
+        assert_eq!(
+            command.commands_param, expected.commands_param,
+            "Command params should matched"
+        );
     }
     #[test]
     fn test_read_from_text() {
