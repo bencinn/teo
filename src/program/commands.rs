@@ -47,9 +47,9 @@ impl Commands {
         }
         vec_commands
     }
-    pub fn read_file(file_name: &str) -> Vec<Commands> {
-        let contents = fs::read_to_string(file_name).expect("Unable to read the file");
-        Commands::from_text(contents)
+    pub fn read_file(file_name: &str) -> Result<Vec<Commands>, std::io::Error> {
+        let contents = fs::read_to_string(file_name)?;
+        Ok(Commands::from_text(contents))
     }
 }
 
@@ -161,7 +161,10 @@ mod test_commands {
     #[test]
     fn test_read_from_file() {
         fs::write("test.teo", b"test(aa,bb,cc)\ntest2(a,b,cc)").unwrap();
-        let vec_return = Commands::read_file("test.teo");
+        let vec_return = match Commands::read_file("test.teo") {
+            Ok(vec) => vec,
+            Err(e) => panic!("Failed to read file: {:?}", e),
+        };
         let expected = vec![
             Commands {
                 commands_name: String::from("test"),
@@ -184,5 +187,17 @@ mod test_commands {
             );
         }
         fs::remove_file("test.teo").unwrap();
+    }
+    #[test]
+    fn test_read_from_nonexistent_file() {
+        match Commands::read_file("nonexistent_file.teo") {
+            Ok(_) => panic!("Expected an error, but read_file succeeded"),
+            Err(e) => assert_eq!(
+                e.kind(),
+                std::io::ErrorKind::NotFound,
+                "Expected an error with NotFound kind, but got {:?}",
+                e.kind()
+            ),
+        };
     }
 }

@@ -1,3 +1,5 @@
+use std::process;
+
 use clap::Parser;
 
 use program::commands::Commands;
@@ -15,7 +17,13 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let vec_commands: Vec<Commands> = Commands::read_file(&args.file_name);
+    let vec_commands = match Commands::read_file(&args.file_name) {
+        Ok(vec) => vec,
+        Err(_e) => {
+            eprintln!("Failed to read file");
+            process::exit(1);
+        }
+    };
     let program: Program = Program {
         commands: vec_commands,
         current_line: 0,
