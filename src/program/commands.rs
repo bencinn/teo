@@ -56,7 +56,7 @@ mod test_commands {
     use std::fs;
 
     #[test]
-    fn test_commands_does_not_crash() {
+    fn test_new_command_does_not_crash() {
         let name = String::from("test");
         let param = String::from("param1, param2, param3");
 
@@ -90,7 +90,7 @@ mod test_commands {
     }
 
     #[test]
-    fn test_trailing_spaces() {
+    fn test_new_command_trailing_spaces() {
         let name = String::from("test");
         let param = String::from("param1, param2 ,param3 ");
 

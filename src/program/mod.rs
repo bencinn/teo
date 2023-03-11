@@ -7,36 +7,32 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn run_command(self: Program) -> Self {
+    pub fn run_command(&mut self, writer: &mut impl std::io::Write) {
         if let Some(current_command) = self.commands.get(self.current_line) {
             match current_command.commands_name.as_str() {
                 "print" => {
                     for i in &current_command.commands_param {
-                        println!("{}", i);
+                        writeln!(writer, "{}", i);
                     }
                 }
                 _ => {
-                    println!("Command not exist: {}", current_command.commands_name);
+                    writeln!(
+                        writer,
+                        "Command not exist: {}",
+                        current_command.commands_name
+                    );
                 }
             }
-            Program {
-                commands: self.commands,
-                current_line: self.current_line + 1, // Increment current_line after executing the command
-                panic: false,
-            }
+            self.current_line += 1;
         } else {
-            Program {
-                commands: self.commands,
-                current_line: self.current_line,
-                panic: true,
-            }
+            self.panic = true;
         }
     }
 
-    pub fn run_loop(self: Program) -> Self {
+    pub fn run_loop(self: Program, mut writer: &mut impl std::io::Write) -> Self {
         let mut program = self;
         while !program.panic && program.current_line < program.commands.len() {
-            program = program.run_command();
+            program.run_command(&mut writer);
         }
         program
     }
@@ -52,14 +48,14 @@ mod program {
         let command = Commands::new("stuff".to_owned(), "aa,bb".to_owned());
         let mut vec_commands: Vec<Commands> = Vec::new();
         vec_commands.push(command);
-        let program: Program = Program {
+        let mut program: Program = Program {
             commands: vec_commands,
             current_line: 1,
             panic: false,
         };
-        let result = program.run_command();
-        assert_eq!(result.panic, true);
-        assert_eq!(result.current_line, 1);
+        program.run_command(&mut Vec::new());
+        assert_eq!(program.panic, true);
+        assert_eq!(program.current_line, 1);
     }
 
     #[test]
@@ -67,14 +63,14 @@ mod program {
         let command = Commands::new("stuff".to_owned(), "aa,bb".to_owned());
         let mut vec_commands: Vec<Commands> = Vec::new();
         vec_commands.push(command);
-        let program: Program = Program {
+        let mut program: Program = Program {
             commands: vec_commands,
             current_line: 2,
             panic: false,
         };
-        let result = program.run_command();
-        assert_eq!(result.panic, true);
-        assert_eq!(result.current_line, 2);
+        program.run_command(&mut Vec::new());
+        assert_eq!(program.panic, true);
+        assert_eq!(program.current_line, 2);
     }
 
     #[test]
@@ -82,14 +78,14 @@ mod program {
         let command = Commands::new("stuff".to_owned(), "aa,bb".to_owned());
         let mut vec_commands: Vec<Commands> = Vec::new();
         vec_commands.push(command);
-        let program: Program = Program {
+        let mut program: Program = Program {
             commands: vec_commands,
             current_line: 2,
             panic: true,
         };
-        let result = program.run_command();
-        assert_eq!(result.panic, true);
-        assert_eq!(result.current_line, 2);
+        program.run_command(&mut Vec::new());
+        assert_eq!(program.panic, true);
+        assert_eq!(program.current_line, 2);
     }
     #[test]
     fn test_program_run_correctly() {
@@ -101,12 +97,13 @@ mod program {
             current_line: 0,
             panic: false,
         };
-        program.run_loop();
-        assert!(true);
+        let mut result = Vec::new();
+        program.run_loop(&mut result);
+        assert_eq!(result, b"Command not exist: stuff\n");
     }
     #[test]
     fn test_program_print_command() {
-        let command = Commands::new("print".to_owned(), "Hello, world!".to_owned());
+        let command = Commands::new("print".to_owned(), "Hello world!".to_owned());
         let mut vec_commands: Vec<Commands> = Vec::new();
         vec_commands.push(command);
         let program: Program = Program {
@@ -114,9 +111,12 @@ mod program {
             current_line: 0,
             panic: false,
         };
-        let result = program.run_loop();
-        assert_eq!(result.panic, false);
-        assert_eq!(result.current_line, 1);
+        let mut result = Vec::new();
+        let program_result = program.run_loop(&mut result);
+        assert_eq!(program_result.current_line, 1);
+        let result_expected = b"Hello, world!\n";
+        println!("{:?}", result_expected);
+        assert_eq!(result, b"Hello world!\n");
     }
 
     #[test]
@@ -131,9 +131,10 @@ mod program {
             current_line: 0,
             panic: false,
         };
-        let result = program.run_loop();
-        assert_eq!(result.panic, false);
-        assert_eq!(result.current_line, 2);
+        let mut result = Vec::new();
+        let program_result = program.run_loop(&mut result);
+        assert_eq!(program_result.current_line, 2);
+        assert_eq!(result, b"Hello\nworld!\n");
     }
 
     #[test]
@@ -146,8 +147,7 @@ mod program {
             current_line: 0,
             panic: false,
         };
-        let result = program.run_loop();
-        assert_eq!(result.panic, false);
+        let result = program.run_loop(&mut Vec::new());
         assert_eq!(result.current_line, 1);
     }
 }

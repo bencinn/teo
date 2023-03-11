@@ -21,5 +21,5 @@ fn main() {
         current_line: 0,
         panic: false,
     };
-    program.run_loop();
+    program.run_loop(&mut Vec::new());
 }
