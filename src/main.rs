@@ -11,7 +11,7 @@ mod program;
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Read from <FILE_NAME>
-    #[arg(short, long, default_value = "main.teo")]
+    #[arg(short, long)]
     file_name: String,
 }
 
