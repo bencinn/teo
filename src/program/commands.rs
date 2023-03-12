@@ -13,6 +13,7 @@ impl Commands {
         for c in param.chars() {
             if c == '"' {
                 in_quotes = !in_quotes;
+                buf.push(c);
             } else if c == ',' && !in_quotes {
                 commands_vec.push(buf.trim().to_owned());
                 buf.clear();
@@ -30,20 +31,13 @@ impl Commands {
     pub fn from_text(contents: String) -> Vec<Commands> {
         let mut vec_commands: Vec<Commands> = Vec::new();
         for i in contents.split("\n") {
-            let start = i.find("(").unwrap_or(i.len());
-            let command_name = i[0..start].trim().to_owned();
-            let params = i[start..].trim_matches(|c| c == '(' || c == ')').to_owned();
-            if command_name.is_empty() {
-                panic!("Invalid command string: {}", i);
+            if !i.is_empty() {
+                let start = i.find("(").unwrap_or(i.len());
+                let command_name = i[0..start].trim().to_owned();
+                let params = i[start..].trim_matches(|c| c == '(' || c == ')').to_owned();
+                let command = Commands::new(command_name, params);
+                vec_commands.push(command);
             }
-            if params.is_empty() {
-                panic!("Invalid parameter string: {}", i);
-            }
-            let start = i.find("(").unwrap_or(i.len());
-            let command_name = i[0..start].trim().to_owned();
-            let params = i[start..].trim_matches(|c| c == '(' || c == ')').to_owned();
-            let command = Commands::new(command_name, params);
-            vec_commands.push(command);
         }
         vec_commands
     }
@@ -120,7 +114,7 @@ mod test_commands {
         let command = Commands::new(name.clone(), param.clone());
         let expected = Commands {
             commands_name: name,
-            commands_param: vec![String::from("param1, param2"), String::from("param3")],
+            commands_param: vec![String::from("\"param1, param2\""), String::from("param3")],
         };
 
         assert_eq!(
