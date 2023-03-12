@@ -1,7 +1,7 @@
 pub mod commands;
 
 pub struct Program {
-    pub commands: Vec<commands::Commands>,
+    pub commands: Vec<commands::Command>,
     pub current_line: usize,
     pub panic: bool,
 }
@@ -12,8 +12,8 @@ impl Program {
             match current_command.commands_name.as_str() {
                 "print" => {
                     for i in &current_command.commands_param {
-                        writeln!(writer, "{}", i).unwrap();
-                        println!("{}", i);
+                        writeln!(writer, "{}", i.param).unwrap();
+                        println!("{}", i.param);
                     }
                 }
                 _ => {
@@ -43,13 +43,13 @@ impl Program {
 
 #[cfg(test)]
 mod program {
-    use super::commands::Commands;
+    use super::commands::Command;
     use super::Program;
 
     #[test]
     fn test_program_panic() {
-        let command = Commands::new("stuff".to_owned(), "aa,bb".to_owned());
-        let mut vec_commands: Vec<Commands> = Vec::new();
+        let command = Command::new("stuff".to_owned(), "aa,bb".to_owned());
+        let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let mut program: Program = Program {
             commands: vec_commands,
@@ -63,8 +63,8 @@ mod program {
 
     #[test]
     fn test_program_out_of_bounds() {
-        let command = Commands::new("stuff".to_owned(), "aa,bb".to_owned());
-        let mut vec_commands: Vec<Commands> = Vec::new();
+        let command = Command::new("stuff".to_owned(), "aa,bb".to_owned());
+        let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let mut program: Program = Program {
             commands: vec_commands,
@@ -78,8 +78,8 @@ mod program {
 
     #[test]
     fn test_program_panic_variable() {
-        let command = Commands::new("stuff".to_owned(), "aa,bb".to_owned());
-        let mut vec_commands: Vec<Commands> = Vec::new();
+        let command = Command::new("stuff".to_owned(), "aa,bb".to_owned());
+        let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let mut program: Program = Program {
             commands: vec_commands,
@@ -92,8 +92,8 @@ mod program {
     }
     #[test]
     fn test_program_run_correctly() {
-        let command = Commands::new("stuff".to_owned(), "aa,bb".to_owned());
-        let mut vec_commands: Vec<Commands> = Vec::new();
+        let command = Command::new("stuff".to_owned(), "aa,bb".to_owned());
+        let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let program: Program = Program {
             commands: vec_commands,
@@ -106,8 +106,8 @@ mod program {
     }
     #[test]
     fn test_program_print_command() {
-        let command = Commands::new("print".to_owned(), "Hello world!".to_owned());
-        let mut vec_commands: Vec<Commands> = Vec::new();
+        let command = Command::new("print".to_owned(), "Hello world!".to_owned());
+        let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let program: Program = Program {
             commands: vec_commands,
@@ -124,9 +124,9 @@ mod program {
 
     #[test]
     fn test_program_multiple_print_commands() {
-        let command1 = Commands::new("print".to_owned(), "Hello".to_owned());
-        let command2 = Commands::new("print".to_owned(), "world!".to_owned());
-        let mut vec_commands: Vec<Commands> = Vec::new();
+        let command1 = Command::new("print".to_owned(), "Hello".to_owned());
+        let command2 = Command::new("print".to_owned(), "world!".to_owned());
+        let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command1);
         vec_commands.push(command2);
         let program: Program = Program {
@@ -142,8 +142,8 @@ mod program {
 
     #[test]
     fn test_program_empty_print_command() {
-        let command = Commands::new("print".to_owned(), "".to_owned());
-        let mut vec_commands: Vec<Commands> = Vec::new();
+        let command = Command::new("print".to_owned(), "".to_owned());
+        let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let program: Program = Program {
             commands: vec_commands,

@@ -1,11 +1,13 @@
 use std::fs;
 
-pub struct Commands {
+pub mod param;
+
+pub struct Command {
     pub commands_name: String,
-    pub commands_param: Vec<String>,
+    pub commands_param: Vec<param::Param>,
 }
 
-impl Commands {
+impl Command {
     pub fn new(name: String, param: String) -> Self {
         let mut commands_vec = Vec::new();
         let mut buf: String = String::new();
@@ -23,33 +25,34 @@ impl Commands {
         }
         commands_vec.push(buf.trim().to_owned());
 
-        Commands {
+        Command {
             commands_name: name,
-            commands_param: commands_vec,
+            commands_param: param::Param::param_from_vec(commands_vec),
         }
     }
-    pub fn from_text(contents: String) -> Vec<Commands> {
-        let mut vec_commands: Vec<Commands> = Vec::new();
+    pub fn from_text(contents: String) -> Vec<Command> {
+        let mut vec_commands: Vec<Command> = Vec::new();
         for i in contents.split("\n") {
             if !i.is_empty() {
                 let start = i.find("(").unwrap_or(i.len());
                 let command_name = i[0..start].trim().to_owned();
                 let params = i[start..].trim_matches(|c| c == '(' || c == ')').to_owned();
-                let command = Commands::new(command_name, params);
+                let command = Command::new(command_name, params);
                 vec_commands.push(command);
             }
         }
         vec_commands
     }
-    pub fn read_file(file_name: &str) -> Result<Vec<Commands>, std::io::Error> {
+    pub fn read_file(file_name: &str) -> Result<Vec<Command>, std::io::Error> {
         let contents = fs::read_to_string(file_name)?;
-        Ok(Commands::from_text(contents))
+        Ok(Command::from_text(contents))
     }
 }
 
 #[cfg(test)]
 mod test_commands {
-    use super::Commands;
+    use super::Command;
+    use crate::program::commands::param;
     use std::fs;
 
     #[test]
@@ -57,7 +60,7 @@ mod test_commands {
         let name = String::from("test");
         let param = String::from("param1, param2, param3");
 
-        let _command = Commands::new(name, param);
+        let _command = Command::new(name, param);
         assert!(true, "Commands should not crash");
     }
 
@@ -66,24 +69,25 @@ mod test_commands {
         let name = String::from("test");
         let param = String::from("param1, param2, param3");
 
-        let command = Commands::new(name.clone(), param.clone());
-        let expected = Commands {
+        let command = Command::new(name.clone(), param.clone());
+        let expected = Command {
             commands_name: name,
-            commands_param: vec![
+            commands_param: param::Param::param_from_vec(vec![
                 String::from("param1"),
                 String::from("param2"),
                 String::from("param3"),
-            ],
+            ]),
         };
 
         assert_eq!(
             command.commands_name, expected.commands_name,
             "Command name should matched"
         );
-        assert_eq!(
-            command.commands_param, expected.commands_param,
-            "Command params should matched"
-        );
+        let mut x = 0;
+        for i in command.commands_param {
+            assert_eq!(i.param, expected.commands_param[x].param);
+            x += 1;
+        }
     }
 
     #[test]
@@ -91,7 +95,7 @@ mod test_commands {
         let name = String::from("test");
         let param = String::from("param1, param2 ,param3 ");
 
-        let command = Commands::new(name, param);
+        let command = Command::new(name, param);
         let expected = vec![
             String::from("param1"),
             String::from("param2"),
@@ -100,9 +104,9 @@ mod test_commands {
 
         for (actual_param, expected_param) in command.commands_param.iter().zip(expected.iter()) {
             assert_eq!(
-                actual_param, expected_param,
+                &actual_param.param, expected_param,
                 "{}'s trailing spaces should be removed to {}",
-                actual_param, expected_param
+                actual_param.param, expected_param
             );
         }
     }
@@ -111,33 +115,41 @@ mod test_commands {
         let name = String::from("test");
         let param = String::from("\"param1, param2\", param3");
 
-        let command = Commands::new(name.clone(), param.clone());
-        let expected = Commands {
+        let command = Command::new(name.clone(), param.clone());
+        let expected = Command {
             commands_name: name,
-            commands_param: vec![String::from("\"param1, param2\""), String::from("param3")],
+            commands_param: param::Param::param_from_vec(vec![
+                String::from("\"param1, param2\""),
+                String::from("param3"),
+            ]),
         };
 
-        assert_eq!(
-            command.commands_name, expected.commands_name,
-            "Command name should matched"
-        );
-        assert_eq!(
-            command.commands_param, expected.commands_param,
-            "Command params should matched"
-        );
+        let mut x = 0;
+        for i in command.commands_param {
+            assert_eq!(i.param, expected.commands_param[x].param);
+            x += 1;
+        }
     }
     #[test]
     fn test_read_from_text() {
         let commands_in_text = String::from("test(aa,bb,cc)\ntest2(a,b,cc)");
-        let vec_commands = Commands::from_text(commands_in_text);
+        let vec_commands = Command::from_text(commands_in_text);
         let expected = vec![
-            Commands {
+            Command {
                 commands_name: "test".to_string(),
-                commands_param: vec!["aa".to_string(), "bb".to_string(), "cc".to_string()],
+                commands_param: param::Param::param_from_vec(vec![
+                    "aa".to_string(),
+                    "bb".to_string(),
+                    "cc".to_string(),
+                ]),
             },
-            Commands {
+            Command {
                 commands_name: "test2".to_string(),
-                commands_param: vec!["a".to_string(), "b".to_string(), "cc".to_string()],
+                commands_param: param::Param::param_from_vec(vec![
+                    "a".to_string(),
+                    "b".to_string(),
+                    "cc".to_string(),
+                ]),
             },
         ];
 
@@ -146,27 +158,36 @@ mod test_commands {
                 actual.commands_name, expected.commands_name,
                 "Command name should match"
             );
-            assert_eq!(
-                actual.commands_param, expected.commands_param,
-                "Command params should match"
-            );
+            let mut x = 0;
+            actual.commands_param.iter().for_each(|i| {
+                assert_eq!(i.param, expected.commands_param[x].param);
+                x += 1;
+            });
         }
     }
     #[test]
     fn test_read_from_file() {
         fs::write("test.teo", b"test(aa,bb,cc)\ntest2(a,b,cc)").unwrap();
-        let vec_return = match Commands::read_file("test.teo") {
+        let vec_return = match Command::read_file("test.teo") {
             Ok(vec) => vec,
             Err(e) => panic!("Failed to read file: {:?}", e),
         };
         let expected = vec![
-            Commands {
+            Command {
                 commands_name: String::from("test"),
-                commands_param: vec![String::from("aa"), String::from("bb"), String::from("cc")],
+                commands_param: param::Param::param_from_vec(vec![
+                    String::from("aa"),
+                    String::from("bb"),
+                    String::from("cc"),
+                ]),
             },
-            Commands {
+            Command {
                 commands_name: String::from("test2"),
-                commands_param: vec![String::from("a"), String::from("b"), String::from("cc")],
+                commands_param: param::Param::param_from_vec(vec![
+                    String::from("a"),
+                    String::from("b"),
+                    String::from("cc"),
+                ]),
             },
         ];
 
@@ -175,16 +196,17 @@ mod test_commands {
                 actual.commands_name, expected.commands_name,
                 "Command names should match"
             );
-            assert_eq!(
-                actual.commands_param, expected.commands_param,
-                "Command parameters should match"
-            );
+            let mut x = 0;
+            actual.commands_param.iter().for_each(|i| {
+                assert_eq!(i.param, expected.commands_param[x].param);
+                x += 1;
+            });
         }
         fs::remove_file("test.teo").unwrap();
     }
     #[test]
     fn test_read_from_nonexistent_file() {
-        match Commands::read_file("nonexistent_file.teo") {
+        match Command::read_file("nonexistent_file.teo") {
             Ok(_) => panic!("Expected an error, but read_file succeeded"),
             Err(e) => assert_eq!(
                 e.kind(),
