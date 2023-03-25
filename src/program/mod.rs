@@ -12,8 +12,9 @@ impl Program {
             match current_command.commands_name.as_str() {
                 "print" => {
                     for i in &current_command.commands_param {
-                        writeln!(writer, "{}", i.param).unwrap();
-                        println!("{}", i.param);
+                        let output = i.get_value_as_str();
+                        writeln!(writer, "{}", output).unwrap();
+                        println!("{}", output);
                     }
                 }
                 _ => {
@@ -106,7 +107,7 @@ mod program {
     }
     #[test]
     fn test_program_print_command() {
-        let command = Command::new("print".to_owned(), "Hello world!".to_owned());
+        let command = Command::new("print".to_owned(), "\"Hello world!\"".to_owned());
         let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let program: Program = Program {
@@ -117,15 +118,13 @@ mod program {
         let mut result = Vec::new();
         let program_result = program.run_loop(&mut result);
         assert_eq!(program_result.current_line, 1);
-        let result_expected = b"Hello, world!\n";
-        println!("{:?}", result_expected);
         assert_eq!(result, b"Hello world!\n");
     }
 
     #[test]
     fn test_program_multiple_print_commands() {
-        let command1 = Command::new("print".to_owned(), "Hello".to_owned());
-        let command2 = Command::new("print".to_owned(), "world!".to_owned());
+        let command1 = Command::new("print".to_owned(), "\"Hello\"".to_owned());
+        let command2 = Command::new("print".to_owned(), "\"world!\"".to_owned());
         let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command1);
         vec_commands.push(command2);
@@ -142,7 +141,7 @@ mod program {
 
     #[test]
     fn test_program_empty_print_command() {
-        let command = Command::new("print".to_owned(), "".to_owned());
+        let command = Command::new("print".to_owned(), "\"\"".to_owned());
         let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let program: Program = Program {

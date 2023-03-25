@@ -1,6 +1,5 @@
-use std::process;
-
 use clap::Parser;
+use std::process;
 
 use program::commands::Command;
 use program::Program;
