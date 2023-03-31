@@ -49,7 +49,7 @@ mod program {
 
     #[test]
     fn test_program_panic() {
-        let command = Command::new("stuff".to_owned(), "aa,bb".to_owned());
+        let command = Command::new("stuff".to_owned(), "1,23".to_owned());
         let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let mut program: Program = Program {
@@ -64,7 +64,7 @@ mod program {
 
     #[test]
     fn test_program_out_of_bounds() {
-        let command = Command::new("stuff".to_owned(), "aa,bb".to_owned());
+        let command = Command::new("stuff".to_owned(), "1,23".to_owned());
         let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let mut program: Program = Program {
@@ -79,7 +79,7 @@ mod program {
 
     #[test]
     fn test_program_panic_variable() {
-        let command = Command::new("stuff".to_owned(), "aa,bb".to_owned());
+        let command = Command::new("stuff".to_owned(), "1,23".to_owned());
         let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let mut program: Program = Program {
@@ -93,7 +93,7 @@ mod program {
     }
     #[test]
     fn test_program_run_correctly() {
-        let command = Command::new("stuff".to_owned(), "aa,bb".to_owned());
+        let command = Command::new("stuff".to_owned(), "1,23".to_owned());
         let mut vec_commands: Vec<Command> = Vec::new();
         vec_commands.push(command);
         let program: Program = Program {

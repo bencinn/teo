@@ -7,4 +7,3 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.1.8", features = ["suggestions", "color", "help", "derive"] }
-eval = "0.4.3"

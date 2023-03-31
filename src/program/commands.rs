@@ -58,7 +58,7 @@ mod test_commands {
     #[test]
     fn test_new_command_does_not_crash() {
         let name = String::from("test");
-        let param = String::from("param1, param2, param3");
+        let param = String::from("1, 2, 3");
 
         let _command = Command::new(name, param);
         assert!(true, "Commands should not crash");
@@ -67,15 +67,15 @@ mod test_commands {
     #[test]
     fn test_new_command_equals_initialized() {
         let name = String::from("test");
-        let param = String::from("param1, param2, param3");
+        let param = String::from("1, 2, 3");
 
         let command = Command::new(name.clone(), param.clone());
         let expected = Command {
             commands_name: name,
             commands_param: param::Param::param_from_vec(vec![
-                String::from("param1"),
-                String::from("param2"),
-                String::from("param3"),
+                String::from("1"),
+                String::from("2"),
+                String::from("3"),
             ]),
         };
 
@@ -93,14 +93,10 @@ mod test_commands {
     #[test]
     fn test_new_command_trailing_spaces() {
         let name = String::from("test");
-        let param = String::from("param1, param2 ,param3 ");
+        let param = String::from("1, 2,  3");
 
         let command = Command::new(name, param);
-        let expected = vec![
-            String::from("param1"),
-            String::from("param2"),
-            String::from("param3"),
-        ];
+        let expected = vec![String::from("1"), String::from("2"), String::from("3")];
 
         for (actual_param, expected_param) in command.commands_param.iter().zip(expected.iter()) {
             assert_eq!(
@@ -113,14 +109,14 @@ mod test_commands {
     #[test]
     fn test_new_command_double_quotes() {
         let name = String::from("test");
-        let param = String::from("\"param1, param2\", param3");
+        let param = String::from("\"param1, param2\", 3");
 
         let command = Command::new(name.clone(), param.clone());
         let expected = Command {
             commands_name: name,
             commands_param: param::Param::param_from_vec(vec![
                 String::from("\"param1, param2\""),
-                String::from("param3"),
+                String::from("3"),
             ]),
         };
 
@@ -132,23 +128,21 @@ mod test_commands {
     }
     #[test]
     fn test_read_from_text() {
-        let commands_in_text = String::from("test(aa,bb,cc)\ntest2(a,b,cc)");
+        let commands_in_text = String::from("test(1, 2)\ntest2(2, 3)");
         let vec_commands = Command::from_text(commands_in_text);
         let expected = vec![
             Command {
                 commands_name: "test".to_string(),
                 commands_param: param::Param::param_from_vec(vec![
-                    "aa".to_string(),
-                    "bb".to_string(),
-                    "cc".to_string(),
+                    "1".to_string(),
+                    "2".to_string(),
                 ]),
             },
             Command {
                 commands_name: "test2".to_string(),
                 commands_param: param::Param::param_from_vec(vec![
-                    "a".to_string(),
-                    "b".to_string(),
-                    "cc".to_string(),
+                    "2".to_string(),
+                    "3".to_string(),
                 ]),
             },
         ];
@@ -167,26 +161,24 @@ mod test_commands {
     }
     #[test]
     fn test_read_from_file() {
-        fs::write("test.teo", b"test(aa,bb,cc)\ntest2(a,b,cc)").unwrap();
+        fs::write("test.teo", b"test(1, 2)\ntest2(2, 3)").unwrap();
         let vec_return = match Command::read_file("test.teo") {
             Ok(vec) => vec,
             Err(e) => panic!("Failed to read file: {:?}", e),
         };
         let expected = vec![
             Command {
-                commands_name: String::from("test"),
+                commands_name: "test".to_string(),
                 commands_param: param::Param::param_from_vec(vec![
-                    String::from("aa"),
-                    String::from("bb"),
-                    String::from("cc"),
+                    "1".to_string(),
+                    "2".to_string(),
                 ]),
             },
             Command {
-                commands_name: String::from("test2"),
+                commands_name: "test2".to_string(),
                 commands_param: param::Param::param_from_vec(vec![
-                    String::from("a"),
-                    String::from("b"),
-                    String::from("cc"),
+                    "2".to_string(),
+                    "3".to_string(),
                 ]),
             },
         ];

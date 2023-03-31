@@ -1,5 +1,3 @@
-use eval::eval;
-
 pub struct Param {
     pub param_type: String,
     pub param: String,
@@ -11,10 +9,7 @@ impl Param {
         } else {
             match &param_value.parse::<f64>() {
                 Ok(_) => "Number",
-                Err(_) => match eval(&param_value) {
-                    Ok(_) => "Eval",
-                    Err(_) => panic!("Unable to determine type of parameter: {}", param_value),
-                },
+                Err(_) => panic!("Unable to determine type of parameter: {}", param_value),
             }
         };
 
@@ -39,10 +34,6 @@ impl Param {
                 String::from(param_chars.as_str())
             }
             "Number" => self.param.parse::<f64>().unwrap().to_string(),
-            "Eval" => match eval(self.param.as_str()) {
-                Ok(result) => result.to_string(),
-                Err(_) => panic!("Cannot evaluate result"),
-            },
             &_ => {
                 panic!("Cannot get value as string for type {}", self.param_type);
             }
