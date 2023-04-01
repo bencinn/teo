@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 pub mod commands;
 
 pub struct Program {
     pub commands: Vec<commands::Command>,
     pub current_line: usize,
     pub panic: bool,
+    pub variable: HashMap<String, f32>,
 }
 
 impl Program {
@@ -12,10 +15,25 @@ impl Program {
             match current_command.commands_name.as_str() {
                 "print" => {
                     for i in &current_command.commands_param {
-                        let output = i.get_value_as_str();
+                        let output = i.get_value_as_str(self.variable.clone());
                         writeln!(writer, "{}", output).unwrap();
                         println!("{}", output);
                     }
+                }
+                "set" => {
+                    self.variable
+                        .entry(
+                            current_command.commands_param[0]
+                                .get_value_as_str(self.variable.clone())
+                                .to_string(),
+                        )
+                        .or_insert(0.0);
+                    self.variable.insert(
+                        current_command.commands_param[0]
+                            .get_value_as_str(self.variable.clone())
+                            .to_string(),
+                        current_command.commands_param[1].get_value_as_float(self.variable.clone()),
+                    );
                 }
                 _ => {
                     writeln!(
@@ -44,6 +62,8 @@ impl Program {
 
 #[cfg(test)]
 mod program {
+    use std::collections::HashMap;
+
     use super::commands::Command;
     use super::Program;
 
@@ -56,6 +76,7 @@ mod program {
             commands: vec_commands,
             current_line: 1,
             panic: false,
+            variable: HashMap::new(),
         };
         program.run_command(&mut Vec::new());
         assert_eq!(program.panic, true);
@@ -71,6 +92,7 @@ mod program {
             commands: vec_commands,
             current_line: 2,
             panic: false,
+            variable: HashMap::new(),
         };
         program.run_command(&mut Vec::new());
         assert_eq!(program.panic, true);
@@ -86,6 +108,7 @@ mod program {
             commands: vec_commands,
             current_line: 2,
             panic: true,
+            variable: HashMap::new(),
         };
         program.run_command(&mut Vec::new());
         assert_eq!(program.panic, true);
@@ -100,6 +123,7 @@ mod program {
             commands: vec_commands,
             current_line: 0,
             panic: false,
+            variable: HashMap::new(),
         };
         let mut result = Vec::new();
         program.run_loop(&mut result);
@@ -114,6 +138,7 @@ mod program {
             commands: vec_commands,
             current_line: 0,
             panic: false,
+            variable: HashMap::new(),
         };
         let mut result = Vec::new();
         let program_result = program.run_loop(&mut result);
@@ -132,6 +157,7 @@ mod program {
             commands: vec_commands,
             current_line: 0,
             panic: false,
+            variable: HashMap::new(),
         };
         let mut result = Vec::new();
         let program_result = program.run_loop(&mut result);
@@ -148,6 +174,7 @@ mod program {
             commands: vec_commands,
             current_line: 0,
             panic: false,
+            variable: HashMap::new(),
         };
         let result = program.run_loop(&mut Vec::new());
         assert_eq!(result.current_line, 1);

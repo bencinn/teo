@@ -1,1 +1,3 @@
 print("Hello, world!", 12, 3)
+set("aa", 123213)
+print(aa)

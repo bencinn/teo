@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 pub struct Param {
     pub param_type: String,
     pub param: String,
@@ -9,7 +11,7 @@ impl Param {
         } else {
             match &param_value.parse::<f64>() {
                 Ok(_) => "Number",
-                Err(_) => panic!("Unable to determine type of parameter: {}", param_value),
+                Err(_) => "Identifier",
             }
         };
 
@@ -25,7 +27,7 @@ impl Param {
         }
         vec_param
     }
-    pub fn get_value_as_str(&self) -> String {
+    pub fn get_value_as_str(&self, program_variable: HashMap<String, f32>) -> String {
         match self.param_type.as_str() {
             "String" => {
                 let mut param_chars = self.param.chars();
@@ -34,8 +36,20 @@ impl Param {
                 String::from(param_chars.as_str())
             }
             "Number" => self.param.parse::<f64>().unwrap().to_string(),
+            // TODO: Fix this (This will panic if the variable indexed does not exist.
+            "Identifier" => program_variable[self.param.as_str()].to_string(),
             &_ => {
                 panic!("Cannot get value as string for type {}", self.param_type);
+            }
+        }
+    }
+    pub fn get_value_as_float(&self, program_variable: HashMap<String, f32>) -> f32 {
+        match self.param_type.as_str() {
+            "Number" => self.param.parse::<f64>().unwrap() as f32,
+            // TODO: Fix this (This will panic if the variable indexed does not exist.
+            "Identifier" => program_variable[self.param.as_str()],
+            &_ => {
+                panic!("Cannot get value as float for type {}", self.param_type);
             }
         }
     }

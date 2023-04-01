@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::collections::HashMap;
 use std::process;
 
 use program::commands::Command;
@@ -27,6 +28,7 @@ fn main() {
         commands: vec_commands,
         current_line: 0,
         panic: false,
+        variable: HashMap::new(),
     };
     program.run_loop(&mut Vec::new());
 }
