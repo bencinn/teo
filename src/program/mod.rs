@@ -21,19 +21,19 @@ impl Program {
                     }
                 }
                 "set" => {
-                    self.variable
-                        .entry(
-                            current_command.commands_param[0]
-                                .get_value_as_str(self.variable.clone())
-                                .to_string(),
-                        )
-                        .or_insert(0.0);
                     self.variable.insert(
                         current_command.commands_param[0]
                             .get_value_as_str(self.variable.clone())
                             .to_string(),
                         current_command.commands_param[1].get_value_as_float(self.variable.clone()),
                     );
+                }
+                "add" => {
+                    self.variable.insert(                        current_command.commands_param[2]
+                            .get_value_as_str(self.variable.clone())
+                            .to_string(), current_command.commands_param[0].get_value_as_float(self.variable.clone())
+                            + current_command.commands_param[1]
+                                .get_value_as_float(self.variable.clone()));
                 }
                 _ => {
                     writeln!(

@@ -36,8 +36,10 @@ impl Param {
                 String::from(param_chars.as_str())
             }
             "Number" => self.param.parse::<f64>().unwrap().to_string(),
-            // TODO: Fix this (This will panic if the variable indexed does not exist.
-            "Identifier" => program_variable[self.param.as_str()].to_string(),
+            "Identifier" => program_variable
+                .get(self.param.as_str())
+                .map(|&value| value.to_string())
+                .unwrap_or_else(|| self.param.clone()),
             &_ => {
                 panic!("Cannot get value as string for type {}", self.param_type);
             }

@@ -1,3 +1,5 @@
 print("Hello, world!", 12, 3)
 set("aa", 123213)
 print(aa)
+add(aa, 10, bb)
+print(bb)
