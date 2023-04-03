@@ -15,7 +15,7 @@ impl Program {
             match current_command.commands_name.as_str() {
                 "print" => {
                     for i in &current_command.commands_param {
-                        let output = i.get_value_as_str(self.variable.clone());
+                        let output = i.get_value_as_str(&self.variable);
                         writeln!(writer, "{}", output).unwrap();
                         println!("{}", output);
                     }
@@ -23,17 +23,36 @@ impl Program {
                 "set" => {
                     self.variable.insert(
                         current_command.commands_param[0]
-                            .get_value_as_str(self.variable.clone())
+                            .get_value_as_varname()
                             .to_string(),
-                        current_command.commands_param[1].get_value_as_float(self.variable.clone()),
+                        current_command.commands_param[1].get_value_as_float(&self.variable),
                     );
                 }
                 "add" => {
-                    self.variable.insert(                        current_command.commands_param[2]
-                            .get_value_as_str(self.variable.clone())
-                            .to_string(), current_command.commands_param[0].get_value_as_float(self.variable.clone())
-                            + current_command.commands_param[1]
-                                .get_value_as_float(self.variable.clone()));
+                    let value = current_command.commands_param[0]
+                        .get_value_as_float(&self.variable)
+                        + current_command.commands_param[1].get_value_as_float(&self.variable);
+                    self.variable
+                        .entry(
+                            current_command.commands_param[2]
+                                .get_value_as_varname()
+                                .to_string(),
+                        )
+                        .and_modify(|v| *v = value)
+                        .or_insert(value);
+                }
+                "subtract" => {
+                    let value = current_command.commands_param[0]
+                        .get_value_as_float(&self.variable)
+                        - current_command.commands_param[1].get_value_as_float(&self.variable);
+                    self.variable
+                        .entry(
+                            current_command.commands_param[2]
+                                .get_value_as_varname()
+                                .to_string(),
+                        )
+                        .and_modify(|v| *v = value)
+                        .or_insert(value);
                 }
                 _ => {
                     writeln!(
