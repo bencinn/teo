@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 pub mod commands;
+pub mod parser;
 
 pub struct Program {
     pub commands: Vec<commands::Command>,

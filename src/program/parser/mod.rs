@@ -1,0 +1,113 @@
+use peg;
+use std::fmt;
+
+use self::ast_parser::program;
+#[derive(Debug)]
+pub enum Ast {
+    String(String),
+    Int(i64),
+    Identifier(String),
+    BinaryOp {
+        op: String,
+        left: Box<Ast>,
+        right: Box<Ast>,
+    },
+    Set {
+        id: String,
+        expr: Box<Ast>,
+    },
+    FunctionDefinition {
+        id: String,
+        params: Vec<(String, String)>,
+        body: Vec<Ast>,
+    },
+    FunctionCall {
+        id: String,
+        args: Vec<Ast>,
+    }
+}
+impl fmt::Display for Ast {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Ast::String(s) => write!(f, "\"{}\"", s),
+            Ast::Int(n) => write!(f, "{}", n),
+            Ast::Identifier(s) => write!(f, "{}", s),
+            Ast::BinaryOp { op, left, right } => {
+                write!(f, "({} {} {})", op, left, right)
+            }
+            Ast::Set { id, expr } => {
+                write!(f, "{} = {}", id, expr)
+            }
+            Ast::FunctionDefinition { id, params, body } => {
+                write!(f, "def {}(", id)?;
+                for (i, (param, ty)) in params.iter().enumerate() {
+                    write!(f, "{}: {}", param, ty)?;
+                    if i < params.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, ") {{\n")?;
+                for stmt in body {
+                    write!(f, "    {}\n", stmt)?;
+                }
+                write!(f, "}}")
+            }
+            Ast::FunctionCall { id, args } => {
+                write!(f, "{}(", id)?;
+                for (i, arg) in args.iter().enumerate() {
+                    write!(f, "{}", arg)?;
+                    if i < args.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+        }
+    }
+}
+
+peg::parser! {
+    grammar ast_parser() for str {
+        rule _() = [' '| '\t'| '\n']*
+        rule integer() -> Ast = n:$(['0'..='9']+) { Ast::Int(n.parse().unwrap()) }
+        rule string() -> Ast = "\"" s:$([^'"']*) "\"" { Ast::String(s.to_string()) }
+        rule identifier() -> Ast = s:$(['a'..='z' | 'A'..='Z' | '_']['a'..='z' | 'A'..='Z' | '_' | '0'..='9']*) { Ast::Identifier(s.to_string()) }
+        rule atom() -> Ast = 
+            integer() /
+            string() /
+            identifier()
+        rule assignment() -> Ast = id:identifier() _ "=" _ expr:expression() { Ast::Set{ id: id.to_string(), expr: Box::new(expr) } }
+        rule function_param() -> (String, String) = id:identifier() _ ":" _ idtype:identifier() {(id.to_string(), idtype.to_string())}
+        rule function() -> Ast
+            = "def" _ id:identifier() _ "(" _ params:(function_param() ** ("," _)) _ ")" _ "{" _ body:(expression() ** (_ ";" _)) _ ";" _ "}"
+            {Ast::FunctionDefinition { id: id.to_string(), params: params, body: body }}
+       rule function_call() -> Ast
+            = id:identifier() _ "(" _ args:(expression() ** ("," _)) _ ")"
+            {Ast::FunctionCall {id: id.to_string(), args: args,}
+        }
+        rule factor() -> Ast
+            = assignment() /
+            function() /
+            function_call() /
+            atom() /
+            "(" _ expr:expression() _ ")" { expr }
+
+        rule term() -> Ast
+            = left:factor() _ op:$(['*' | '/']) _ right:term()
+                { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
+                factor()
+
+        rule expression() -> Ast = left:term() _ op:$(['+' | '-']) _ right:expression()
+                                        { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
+                                        term()
+        pub rule program() -> Vec<Ast> = _ exprs:(expression() ** (";" _)) _ ";"? _ { exprs }
+        }
+}
+impl Ast {
+    pub fn parse_code(block: &str){
+    match ast_parser::program(block) {
+        Ok(ast) => println!("{:#?}", ast),
+        Err(e) => eprintln!("Error: {:?}", e),
+    }
+    }
+}

@@ -1,5 +1,7 @@
 use std::fs;
 
+use super::parser::Ast;
+
 pub mod param;
 
 pub struct Command {
@@ -19,7 +21,8 @@ impl Command {
             } else if c == ',' && !in_quotes {
                 commands_vec.push(buf.trim().to_owned());
                 buf.clear();
-            } else {
+            }
+            else {
                 buf.push(c);
             }
         }
@@ -31,8 +34,9 @@ impl Command {
         }
     }
     pub fn from_text(contents: String) -> Vec<Command> {
+        Ast::parse_code(&contents);
         let mut vec_commands: Vec<Command> = Vec::new();
-        for i in contents.split("\n") {
+        for i in contents.trim().split(";") {
             if !i.is_empty() {
                 let start = i.find("(").unwrap_or(i.len());
                 let command_name = i[0..start].trim().to_owned();
