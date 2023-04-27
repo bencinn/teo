@@ -54,6 +54,32 @@ impl Program {
                         .and_modify(|v| *v = value)
                         .or_insert(value);
                 }
+                "multiply" => {
+                    let value = current_command.commands_param[0]
+                        .get_value_as_float(&self.variable)
+                        * current_command.commands_param[1].get_value_as_float(&self.variable);
+                    self.variable
+                        .entry(
+                            current_command.commands_param[2]
+                                .get_value_as_varname()
+                                .to_string(),
+                        )
+                        .and_modify(|v| *v = value)
+                        .or_insert(value);
+                }
+                "divide" => {
+                    let value = current_command.commands_param[0]
+                        .get_value_as_float(&self.variable)
+                        / current_command.commands_param[1].get_value_as_float(&self.variable);
+                    self.variable
+                        .entry(
+                            current_command.commands_param[2]
+                                .get_value_as_varname()
+                                .to_string(),
+                        )
+                        .and_modify(|v| *v = value)
+                        .or_insert(value);
+                }
                 _ => {
                     writeln!(
                         writer,
