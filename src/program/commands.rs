@@ -132,7 +132,7 @@ mod test_commands {
     }
     #[test]
     fn test_read_from_text() {
-        let commands_in_text = String::from("test(1, 2)\ntest2(2, 3)");
+        let commands_in_text = String::from("test(1, 2);test2(2, 3)");
         let vec_commands = Command::from_text(commands_in_text);
         let expected = vec![
             Command {
@@ -165,7 +165,7 @@ mod test_commands {
     }
     #[test]
     fn test_read_from_file() {
-        fs::write("test.teo", b"test(1, 2)\ntest2(2, 3)").unwrap();
+        fs::write("test.teo", b"test(1, 2);test2(2, 3)").unwrap();
         let vec_return = match Command::read_file("test.teo") {
             Ok(vec) => vec,
             Err(e) => panic!("Failed to read file: {:?}", e),
