@@ -1,8 +1,7 @@
 use peg;
 use std::fmt;
 
-use self::ast_parser::program;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Ast {
     String(String),
     Int(i64),
@@ -24,7 +23,7 @@ pub enum Ast {
     FunctionCall {
         id: String,
         args: Vec<Ast>,
-    }
+    },
 }
 impl fmt::Display for Ast {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -72,7 +71,7 @@ peg::parser! {
         rule integer() -> Ast = n:$(['0'..='9']+) { Ast::Int(n.parse().unwrap()) }
         rule string() -> Ast = "\"" s:$([^'"']*) "\"" { Ast::String(s.to_string()) }
         rule identifier() -> Ast = s:$(['a'..='z' | 'A'..='Z' | '_']['a'..='z' | 'A'..='Z' | '_' | '0'..='9']*) { Ast::Identifier(s.to_string()) }
-        rule atom() -> Ast = 
+        rule atom() -> Ast =
             integer() /
             string() /
             identifier()
@@ -104,10 +103,16 @@ peg::parser! {
         }
 }
 impl Ast {
-    pub fn parse_code(block: &str){
-    match ast_parser::program(block) {
-        Ok(ast) => println!("{:#?}", ast),
-        Err(e) => eprintln!("Error: {:?}", e),
-    }
+    pub fn parse_code(block: &str) -> Result<Vec<Ast>, peg::error::ParseError<peg::str::LineCol>> {
+        match ast_parser::program(block) {
+            Ok(ast) => {
+                println!("{:?}", ast);
+                Ok(ast)
+            }
+            Err(e) => {
+                println!("{}", e);
+                Err(e)
+            }
+        }
     }
 }

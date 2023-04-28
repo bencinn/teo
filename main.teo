@@ -1,13 +1,7 @@
-print("Hello, world!", 12, 3);
-set(aa, 123213);
-print(aa);
-add(aa, 10, bb);
-print(bb);
-subtract(aa, 10, aa);
-print(aa);
-add(aa, 20, aa);
-print(aa);
-multiply(2, aa, aa);
-print(aa);
-divide(aa,2,aa);
-print(aa);
+def i(a: int){
+  print(a + 3 * 4);
+};
+n = 3;
+n = 2;
+i(n);
+return(0);

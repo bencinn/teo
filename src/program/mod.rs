@@ -1,228 +1,122 @@
-use std::collections::HashMap;
-
-pub mod commands;
+use std::{collections::HashMap, process::exit};
 pub mod parser;
-
 pub struct Program {
-    pub commands: Vec<commands::Command>,
+    pub commands: Vec<parser::Ast>,
     pub current_line: usize,
     pub panic: bool,
     pub variable: HashMap<String, f32>,
+    pub function: HashMap<String, parser::Ast>,
+    pub std_commands: Vec<String>,
 }
 
 impl Program {
-    pub fn run_command(&mut self, writer: &mut impl std::io::Write) {
-        if let Some(current_command) = self.commands.get(self.current_line) {
-            match current_command.commands_name.as_str() {
-                "print" => {
-                    for i in &current_command.commands_param {
-                        let output = i.get_value_as_str(&self.variable);
-                        writeln!(writer, "{}", output).unwrap();
-                        println!("{}", output);
-                    }
+    pub fn run_loop(&mut self, mut writer: &mut impl std::io::Write) {
+        for command in &self.commands {
+            match command {
+                parser::Ast::Set { id, expr } => {
+                    let value = expr.evaluate(&self.variable);
+                    self.variable.insert(id.clone(), value);
                 }
-                "set" => {
-                    self.variable.insert(
-                        current_command.commands_param[0]
-                            .get_value_as_varname()
-                            .to_string(),
-                        current_command.commands_param[1].get_value_as_float(&self.variable),
+                parser::Ast::FunctionDefinition { id, params, body } => {
+                    if self.function.contains_key(id) | self.std_commands.contains(id) {
+                        panic!("Function `{}` already exist", id);
+                    }
+                    self.function.insert(
+                        id.clone(),
+                        parser::Ast::FunctionDefinition {
+                            id: id.clone(),
+                            params: params.clone(),
+                            body: body.clone(),
+                        },
                     );
                 }
-                "add" => {
-                    let value = current_command.commands_param[0]
-                        .get_value_as_float(&self.variable)
-                        + current_command.commands_param[1].get_value_as_float(&self.variable);
-                    self.variable
-                        .entry(
-                            current_command.commands_param[2]
-                                .get_value_as_varname()
-                                .to_string(),
-                        )
-                        .and_modify(|v| *v = value)
-                        .or_insert(value);
+                parser::Ast::FunctionCall { id, args } => {
+                    let std_functions = self.std_commands.clone();
+                    if std_functions.contains(&id) {
+                        match id.as_str() {
+                            "print" => {
+                                for arg in args {
+                                    let value = arg.evaluate(&self.variable);
+                                    println!("{}", value);
+                                    write!(&mut writer, "{}", value).unwrap();
+                                }
+                            }
+                            "return" => {
+                                if let Some(arg) = args.first() {
+                                    let value = arg.evaluate(&self.variable);
+                                    exit(value as i32);
+                                } else {
+                                    panic!("Need exit code");
+                                }
+                            }
+                            _ => unreachable!(),
+                        }
+                    } else if let Some(func) = self.function.get(id) {
+                        match func {
+                            parser::Ast::FunctionDefinition { params, body, .. } => {
+                                if params.len() != args.len() {
+                                    panic!("Not enough argument",);
+                                }
+                                let mut local_variables = HashMap::new();
+                                for (i, arg) in args.iter().enumerate() {
+                                    let (name, _) = &params[i];
+                                    let value = arg.evaluate(&self.variable);
+                                    local_variables.insert(name.clone(), value);
+                                }
+                                let mut program = Program {
+                                    commands: body.clone(),
+                                    current_line: 0,
+                                    panic: false,
+                                    variable: local_variables,
+                                    function: self.function.clone(),
+                                    std_commands: self.std_commands.clone(),
+                                };
+                                program.run_loop(writer);
+                                if program.panic {
+                                    panic!("Function `{}` panicked", id);
+                                }
+                            }
+                            _ => panic!("`{}` is not a function", id),
+                        }
+                    } else {
+                        panic!("Function `{}` not defined", id);
+                    }
                 }
-                "subtract" => {
-                    let value = current_command.commands_param[0]
-                        .get_value_as_float(&self.variable)
-                        - current_command.commands_param[1].get_value_as_float(&self.variable);
-                    self.variable
-                        .entry(
-                            current_command.commands_param[2]
-                                .get_value_as_varname()
-                                .to_string(),
-                        )
-                        .and_modify(|v| *v = value)
-                        .or_insert(value);
-                }
-                "multiply" => {
-                    let value = current_command.commands_param[0]
-                        .get_value_as_float(&self.variable)
-                        * current_command.commands_param[1].get_value_as_float(&self.variable);
-                    self.variable
-                        .entry(
-                            current_command.commands_param[2]
-                                .get_value_as_varname()
-                                .to_string(),
-                        )
-                        .and_modify(|v| *v = value)
-                        .or_insert(value);
-                }
-                "divide" => {
-                    let value = current_command.commands_param[0]
-                        .get_value_as_float(&self.variable)
-                        / current_command.commands_param[1].get_value_as_float(&self.variable);
-                    self.variable
-                        .entry(
-                            current_command.commands_param[2]
-                                .get_value_as_varname()
-                                .to_string(),
-                        )
-                        .and_modify(|v| *v = value)
-                        .or_insert(value);
-                }
-                _ => {
-                    writeln!(
-                        writer,
-                        "Command not exist: {}",
-                        current_command.commands_name
-                    )
-                    .unwrap();
-                    println!("Command not exist: {}", current_command.commands_name);
-                }
+                _ => {}
             }
-            self.current_line += 1;
-        } else {
-            self.panic = true;
         }
     }
+}
 
-    pub fn run_loop(self: Program, mut writer: &mut impl std::io::Write) -> Self {
-        let mut program = self;
-        while !program.panic && program.current_line < program.commands.len() {
-            program.run_command(&mut writer);
+trait Evaluate {
+    fn evaluate(&self, variables: &HashMap<String, f32>) -> f32;
+}
+
+impl Evaluate for parser::Ast {
+    fn evaluate(&self, variables: &HashMap<String, f32>) -> f32 {
+        match self {
+            parser::Ast::Int(i) => *i as f32,
+            parser::Ast::Identifier(id) => match variables.get(id) {
+                Some(value) => *value,
+                None => {
+                    panic!("Error: variable not found: {}", id)
+                }
+            },
+            parser::Ast::BinaryOp { op, left, right } => {
+                let left_value = left.evaluate(variables);
+                let right_value = right.evaluate(variables);
+                match op.as_str() {
+                    "+" => left_value + right_value,
+                    "-" => left_value - right_value,
+                    "*" => left_value * right_value,
+                    "/" => left_value / right_value,
+                    _ => panic!("{} is not a valid binary operator", op),
+                }
+            }
+            _ => panic!("Invalid AST node"),
         }
-        program
     }
 }
 
 #[cfg(test)]
-mod program {
-    use std::collections::HashMap;
-
-    use super::commands::Command;
-    use super::Program;
-
-    #[test]
-    fn test_program_panic() {
-        let command = Command::new("stuff".to_owned(), "1,23".to_owned());
-        let mut vec_commands: Vec<Command> = Vec::new();
-        vec_commands.push(command);
-        let mut program: Program = Program {
-            commands: vec_commands,
-            current_line: 1,
-            panic: false,
-            variable: HashMap::new(),
-        };
-        program.run_command(&mut Vec::new());
-        assert_eq!(program.panic, true);
-        assert_eq!(program.current_line, 1);
-    }
-
-    #[test]
-    fn test_program_out_of_bounds() {
-        let command = Command::new("stuff".to_owned(), "1,23".to_owned());
-        let mut vec_commands: Vec<Command> = Vec::new();
-        vec_commands.push(command);
-        let mut program: Program = Program {
-            commands: vec_commands,
-            current_line: 2,
-            panic: false,
-            variable: HashMap::new(),
-        };
-        program.run_command(&mut Vec::new());
-        assert_eq!(program.panic, true);
-        assert_eq!(program.current_line, 2);
-    }
-
-    #[test]
-    fn test_program_panic_variable() {
-        let command = Command::new("stuff".to_owned(), "1,23".to_owned());
-        let mut vec_commands: Vec<Command> = Vec::new();
-        vec_commands.push(command);
-        let mut program: Program = Program {
-            commands: vec_commands,
-            current_line: 2,
-            panic: true,
-            variable: HashMap::new(),
-        };
-        program.run_command(&mut Vec::new());
-        assert_eq!(program.panic, true);
-        assert_eq!(program.current_line, 2);
-    }
-    #[test]
-    fn test_program_run_correctly() {
-        let command = Command::new("stuff".to_owned(), "1,23".to_owned());
-        let mut vec_commands: Vec<Command> = Vec::new();
-        vec_commands.push(command);
-        let program: Program = Program {
-            commands: vec_commands,
-            current_line: 0,
-            panic: false,
-            variable: HashMap::new(),
-        };
-        let mut result = Vec::new();
-        program.run_loop(&mut result);
-        assert_eq!(result, b"Command not exist: stuff\n");
-    }
-    #[test]
-    fn test_program_print_command() {
-        let command = Command::new("print".to_owned(), "\"Hello world!\"".to_owned());
-        let mut vec_commands: Vec<Command> = Vec::new();
-        vec_commands.push(command);
-        let program: Program = Program {
-            commands: vec_commands,
-            current_line: 0,
-            panic: false,
-            variable: HashMap::new(),
-        };
-        let mut result = Vec::new();
-        let program_result = program.run_loop(&mut result);
-        assert_eq!(program_result.current_line, 1);
-        assert_eq!(result, b"Hello world!\n");
-    }
-
-    #[test]
-    fn test_program_multiple_print_commands() {
-        let command1 = Command::new("print".to_owned(), "\"Hello\"".to_owned());
-        let command2 = Command::new("print".to_owned(), "\"world!\"".to_owned());
-        let mut vec_commands: Vec<Command> = Vec::new();
-        vec_commands.push(command1);
-        vec_commands.push(command2);
-        let program: Program = Program {
-            commands: vec_commands,
-            current_line: 0,
-            panic: false,
-            variable: HashMap::new(),
-        };
-        let mut result = Vec::new();
-        let program_result = program.run_loop(&mut result);
-        assert_eq!(program_result.current_line, 2);
-        assert_eq!(result, b"Hello\nworld!\n");
-    }
-
-    #[test]
-    fn test_program_empty_print_command() {
-        let command = Command::new("print".to_owned(), "\"\"".to_owned());
-        let mut vec_commands: Vec<Command> = Vec::new();
-        vec_commands.push(command);
-        let program: Program = Program {
-            commands: vec_commands,
-            current_line: 0,
-            panic: false,
-            variable: HashMap::new(),
-        };
-        let result = program.run_loop(&mut Vec::new());
-        assert_eq!(result.current_line, 1);
-    }
-}
+mod program {}

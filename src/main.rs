@@ -1,8 +1,7 @@
 use clap::Parser;
 use std::collections::HashMap;
-use std::process;
+use std::{fs, process};
 
-use program::commands::Command;
 use program::Program;
 
 mod program;
@@ -17,18 +16,22 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let vec_commands = match Command::read_file(&args.file_name) {
-        Ok(vec) => vec,
+    let vec_ast = match program::parser::Ast::parse_code(
+        fs::read_to_string(args.file_name).unwrap().as_str(),
+    ) {
+        Ok(ast) => ast,
         Err(_e) => {
             eprintln!("Failed to read file");
             process::exit(1);
         }
     };
-    let program: Program = Program {
-        commands: vec_commands,
+    let mut program: Program = Program {
+        commands: vec_ast,
         current_line: 0,
         panic: false,
         variable: HashMap::new(),
+        function: HashMap::new(),
+        std_commands: Vec::from(["return".to_owned(), "print".to_owned(), "printstr".to_owned()]),
     };
     program.run_loop(&mut Vec::new());
 }
