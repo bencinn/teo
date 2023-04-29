@@ -4,9 +4,32 @@ pub struct Program {
     pub commands: Vec<parser::Ast>,
     pub current_line: usize,
     pub panic: bool,
-    pub variable: HashMap<String, f32>,
+    pub variable: HashMap<String, Data>,
     pub function: HashMap<String, parser::Ast>,
     pub std_commands: Vec<String>,
+}
+
+#[derive(Clone)]
+pub enum Data {
+    String(String),
+    Int(f32),
+    Array(Vec<Data>),
+}
+
+impl Data {
+    fn as_float(&self) -> f32 {
+        match self {
+            Data::Int(i) => *i,
+            _ => panic!("Data is not convertable"),
+        }
+    }
+    fn as_string(&self) -> String {
+        match self {
+            Data::Int(i) => i.to_string(),
+            Data::String(i) => i.clone(),
+            _ => panic!("Data is not convertable"),
+        }
+    }
 }
 
 impl Program {
@@ -37,14 +60,14 @@ impl Program {
                             "print" => {
                                 for arg in args {
                                     let value = arg.evaluate(&self.variable);
-                                    println!("{}", value);
-                                    write!(&mut writer, "{}", value).unwrap();
+                                    println!("{}", value.as_string());
+                                    write!(&mut writer, "{}", value.as_string()).unwrap();
                                 }
                             }
                             "return" => {
                                 if let Some(arg) = args.first() {
                                     let value = arg.evaluate(&self.variable);
-                                    exit(value as i32);
+                                    exit(value.as_float() as i32);
                                 } else {
                                     panic!("Need exit code");
                                 }
@@ -89,15 +112,15 @@ impl Program {
 }
 
 trait Evaluate {
-    fn evaluate(&self, variables: &HashMap<String, f32>) -> f32;
+    fn evaluate(&self, variables: &HashMap<String, Data>) -> Data;
 }
 
 impl Evaluate for parser::Ast {
-    fn evaluate(&self, variables: &HashMap<String, f32>) -> f32 {
+    fn evaluate(&self, variables: &HashMap<String, Data>) -> Data {
         match self {
-            parser::Ast::Int(i) => *i as f32,
+            parser::Ast::Int(i) => Data::Int(*i as f32),
             parser::Ast::Identifier(id) => match variables.get(id) {
-                Some(value) => *value,
+                Some(value) => value.clone(),
                 None => {
                     panic!("Error: variable not found: {}", id)
                 }
@@ -105,13 +128,24 @@ impl Evaluate for parser::Ast {
             parser::Ast::BinaryOp { op, left, right } => {
                 let left_value = left.evaluate(variables);
                 let right_value = right.evaluate(variables);
+                let f1 = left_value.as_float();
+                let f2 = right_value.as_float();
                 match op.as_str() {
-                    "+" => left_value + right_value,
-                    "-" => left_value - right_value,
-                    "*" => left_value * right_value,
-                    "/" => left_value / right_value,
+                    "+" => Data::Int(f1 + f2),
+                    "-" => Data::Int(f1 - f2),
+                    "*" => Data::Int(f1 * f2),
+                    "/" => Data::Int(f1 / f2),
                     _ => panic!("{} is not a valid binary operator", op),
                 }
+            }
+            parser::Ast::String(i) => Data::String(i.clone()),
+            parser::Ast::Array(elements) => {
+                let mut array_data = Vec::new();
+                for element in elements {
+                    let element_data = element.evaluate(variables);
+                    array_data.push(element_data);
+                }
+                Data::Array(array_data)
             }
             _ => panic!("Invalid AST node"),
         }

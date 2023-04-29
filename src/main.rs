@@ -1,5 +1,6 @@
 use clap::Parser;
 use std::collections::HashMap;
+use std::process::exit;
 use std::{fs, process};
 
 use program::Program;
@@ -12,6 +13,9 @@ struct Args {
     /// Read from <FILE_NAME>
     #[arg(short, long)]
     file_name: String,
+    // Only parse the code and exit
+    #[arg(long, default_value_t = false)]
+    only_parse: bool,
 }
 
 fn main() {
@@ -25,13 +29,20 @@ fn main() {
             process::exit(1);
         }
     };
+    if args.only_parse == true {
+        exit(0);
+    };
     let mut program: Program = Program {
         commands: vec_ast,
         current_line: 0,
         panic: false,
         variable: HashMap::new(),
         function: HashMap::new(),
-        std_commands: Vec::from(["return".to_owned(), "print".to_owned(), "printstr".to_owned()]),
+        std_commands: Vec::from([
+            "return".to_owned(),
+            "print".to_owned(),
+            "printstr".to_owned(),
+        ]),
     };
     program.run_loop(&mut Vec::new());
 }

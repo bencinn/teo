@@ -24,6 +24,7 @@ pub enum Ast {
         id: String,
         args: Vec<Ast>,
     },
+    Array(Vec<Ast>),
 }
 impl fmt::Display for Ast {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -61,6 +62,16 @@ impl fmt::Display for Ast {
                 }
                 write!(f, ")")
             }
+            Ast::Array(elements) => {
+                write!(f, "[")?;
+                for (i, element) in elements.iter().enumerate() {
+                    write!(f, "{}", element)?;
+                    if i < elements.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, "]")
+            }
         }
     }
 }
@@ -71,10 +82,17 @@ peg::parser! {
         rule integer() -> Ast = n:$(['0'..='9']+) { Ast::Int(n.parse().unwrap()) }
         rule string() -> Ast = "\"" s:$([^'"']*) "\"" { Ast::String(s.to_string()) }
         rule identifier() -> Ast = s:$(['a'..='z' | 'A'..='Z' | '_']['a'..='z' | 'A'..='Z' | '_' | '0'..='9']*) { Ast::Identifier(s.to_string()) }
+        rule array() -> Ast
+            = "[" _ values:(expression() ** ("," _)) _ "]"
+            { Ast::Array(values) }
+
         rule atom() -> Ast =
             integer() /
             string() /
-            identifier()
+    identifier()
+
+
+
         rule assignment() -> Ast = id:identifier() _ "=" _ expr:expression() { Ast::Set{ id: id.to_string(), expr: Box::new(expr) } }
         rule function_param() -> (String, String) = id:identifier() _ ":" _ idtype:identifier() {(id.to_string(), idtype.to_string())}
         rule function() -> Ast
@@ -84,10 +102,12 @@ peg::parser! {
             = id:identifier() _ "(" _ args:(expression() ** ("," _)) _ ")"
             {Ast::FunctionCall {id: id.to_string(), args: args,}
         }
+
         rule factor() -> Ast
             = assignment() /
             function() /
             function_call() /
+            array() /
             atom() /
             "(" _ expr:expression() _ ")" { expr }
 
