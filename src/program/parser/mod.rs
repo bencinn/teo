@@ -46,9 +46,9 @@ impl fmt::Display for Ast {
                         write!(f, ", ")?;
                     }
                 }
-                write!(f, ") {{\n")?;
+                writeln!(f, ") {{")?;
                 for stmt in body {
-                    write!(f, "    {}\n", stmt)?;
+                    writeln!(f, "    {}", stmt)?;
                 }
                 write!(f, "}}")
             }
@@ -97,10 +97,10 @@ peg::parser! {
         rule function_param() -> (String, String) = id:identifier() _ ":" _ idtype:identifier() {(id.to_string(), idtype.to_string())}
         rule function() -> Ast
             = "def" _ id:identifier() _ "(" _ params:(function_param() ** ("," _)) _ ")" _ "{" _ body:(expression() ** (_ ";" _)) _ ";" _ "}"
-            {Ast::FunctionDefinition { id: id.to_string(), params: params, body: body }}
+            {Ast::FunctionDefinition { id: id.to_string(), params, body}}
        rule function_call() -> Ast
             = id:identifier() _ "(" _ args:(expression() ** ("," _)) _ ")"
-            {Ast::FunctionCall {id: id.to_string(), args: args,}
+            {Ast::FunctionCall {id: id.to_string(), args,}
         }
 
         rule factor() -> Ast

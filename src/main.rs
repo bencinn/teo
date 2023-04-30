@@ -29,7 +29,7 @@ fn main() {
             process::exit(1);
         }
     };
-    if args.only_parse == true {
+    if args.only_parse {
         exit(0);
     };
     let mut program: Program = Program {

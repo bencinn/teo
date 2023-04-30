@@ -55,7 +55,7 @@ impl Program {
                 }
                 parser::Ast::FunctionCall { id, args } => {
                     let std_functions = self.std_commands.clone();
-                    if std_functions.contains(&id) {
+                    if std_functions.contains(id) {
                         match id.as_str() {
                             "print" => {
                                 for arg in args {
