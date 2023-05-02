@@ -1,3 +1,5 @@
+#![feature(test)]
+
 use clap::Parser;
 use std::collections::HashMap;
 use std::process::exit;

@@ -89,16 +89,14 @@ peg::parser! {
         rule atom() -> Ast =
             integer() /
             string() /
-    identifier()
-
-
+            identifier()
 
         rule assignment() -> Ast = id:identifier() _ "=" _ expr:expression() { Ast::Set{ id: id.to_string(), expr: Box::new(expr) } }
         rule function_param() -> (String, String) = id:identifier() _ ":" _ idtype:identifier() {(id.to_string(), idtype.to_string())}
         rule function() -> Ast
             = "def" _ id:identifier() _ "(" _ params:(function_param() ** ("," _)) _ ")" _ "{" _ body:(expression() ** (_ ";" _)) _ ";" _ "}"
             {Ast::FunctionDefinition { id: id.to_string(), params, body}}
-       rule function_call() -> Ast
+        rule function_call() -> Ast
             = id:identifier() _ "(" _ args:(expression() ** ("," _)) _ ")"
             {Ast::FunctionCall {id: id.to_string(), args,}
         }

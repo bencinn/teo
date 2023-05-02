@@ -9,7 +9,7 @@ pub struct Program {
     pub std_commands: Vec<String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Data {
     String(String),
     Int(f32),
@@ -152,5 +152,130 @@ impl Evaluate for parser::Ast {
     }
 }
 
+extern crate test;
+
 #[cfg(test)]
-mod program {}
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_evaluate_int() {
+        let ast = parser::Ast::Int(42);
+        let variables = HashMap::new();
+        let result = ast.evaluate(&variables);
+        assert_eq!(result, Data::Int(42.0));
+    }
+
+    #[test]
+    fn test_evaluate_identifier() {
+        let ast = parser::Ast::Identifier("x".to_string());
+        let mut variables = HashMap::new();
+        variables.insert("x".to_string(), Data::Int(42.0));
+        let result = ast.evaluate(&variables);
+        assert_eq!(result, Data::Int(42.0));
+    }
+
+    #[test]
+    fn test_evaluate_binary_op() {
+        let left = parser::Ast::Int(2);
+        let right = parser::Ast::Int(3);
+        let ast = parser::Ast::BinaryOp {
+            op: "+".to_string(),
+            left: Box::new(left),
+            right: Box::new(right),
+        };
+        let variables = HashMap::new();
+        let result = ast.evaluate(&variables);
+        assert_eq!(result, Data::Int(5.0));
+    }
+
+    #[test]
+    fn test_evaluate_string() {
+        let ast = parser::Ast::String("hello".to_string());
+        let variables = HashMap::new();
+        let result = ast.evaluate(&variables);
+        assert_eq!(result, Data::String("hello".to_string()));
+    }
+
+    #[test]
+    fn test_evaluate_array() {
+        let elements = vec![
+            parser::Ast::Int(1),
+            parser::Ast::Int(2),
+            parser::Ast::Int(3),
+        ];
+        let ast = parser::Ast::Array(elements);
+        let variables = HashMap::new();
+        let result = ast.evaluate(&variables);
+        assert_eq!(
+            result,
+            Data::Array(vec![Data::Int(1.0), Data::Int(2.0), Data::Int(3.0)])
+        );
+    }
+
+    use rand::{thread_rng, Rng};
+
+    #[bench]
+    fn bench_evaluate_int(b: &mut test::Bencher) {
+        let mut rng = thread_rng();
+        let value = rng.gen_range(10000..50000);
+        let ast = parser::Ast::Int(value);
+        let variables = HashMap::new();
+        b.iter(|| test::black_box(ast.evaluate(&variables)));
+    }
+
+    #[bench]
+    fn bench_evaluate_binary_op(b: &mut test::Bencher) {
+        let mut rng = thread_rng();
+        let left_value = rng.gen_range(10000..50000);
+        let right_value = rng.gen_range(10000..50000);
+        let left = parser::Ast::Int(left_value);
+        let right = parser::Ast::Int(right_value);
+        let asts = vec![
+            parser::Ast::BinaryOp {
+                op: "+".to_string(),
+                left: Box::new(left.clone()),
+                right: Box::new(right.clone()),
+            },
+            parser::Ast::BinaryOp {
+                op: "-".to_string(),
+                left: Box::new(left.clone()),
+                right: Box::new(right.clone()),
+            },
+            parser::Ast::BinaryOp {
+                op: "*".to_string(),
+                left: Box::new(left.clone()),
+                right: Box::new(right.clone()),
+            },
+            parser::Ast::BinaryOp {
+                op: "/".to_string(),
+                left: Box::new(left),
+                right: Box::new(right),
+            },
+        ];
+        let variables = HashMap::new();
+        b.iter(|| {
+            for ast in &asts {
+                test::black_box(ast.evaluate(&variables));
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_run_print(b: &mut test::Bencher) {
+        let code = "print(1)";
+        let ast = parser::Ast::parse_code(code).unwrap();
+        let mut program = Program {
+            commands: Vec::from(ast),
+            current_line: 0,
+            panic: false,
+            variable: HashMap::new(),
+            function: HashMap::new(),
+            std_commands: vec!["print".to_owned()],
+        };
+        b.iter(|| {
+            program.run_loop(&mut Vec::new());
+        })
+    }
+}
