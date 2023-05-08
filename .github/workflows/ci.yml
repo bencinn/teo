@@ -41,10 +41,8 @@ jobs:
 
     strategy:
       matrix:
-        build: [stable, beta, nightly]
+        build: [nightly]
         include:
-          - build: beta
-            rust: beta
           - build: nightly
             rust: nightly
             benches: true
