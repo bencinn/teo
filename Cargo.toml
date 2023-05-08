@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.1.8", features = ["suggestions", "color", "help", "derive"] }
+peg = "0.8.1"
+rand = "0.8.5"

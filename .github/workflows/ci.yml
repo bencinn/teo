@@ -41,12 +41,10 @@ jobs:
 
     strategy:
       matrix:
-        build: [stable, beta, nightly]
+        build: [nightly]
+        benches: [false]
         include:
-          - build: beta
-            rust: beta
           - build: nightly
-            rust: nightly
             benches: true
 
     steps:
@@ -56,7 +54,7 @@ jobs:
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.rust || 'stable' }}
+          toolchain: 'nightly'
           profile: minimal
           override: true
 
