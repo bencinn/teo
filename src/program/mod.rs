@@ -12,12 +12,12 @@ pub struct Program {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Data {
     String(String),
-    Int(f32),
+    Int(i64),
     Array(Vec<Data>),
 }
 
 impl Data {
-    fn as_float(&self) -> f32 {
+    fn as_float(&self) -> i64 {
         match self {
             Data::Int(i) => *i,
             _ => panic!("Data is not convertable"),
@@ -118,7 +118,7 @@ trait Evaluate {
 impl Evaluate for parser::Ast {
     fn evaluate(&self, variables: &HashMap<String, Data>) -> Data {
         match self {
-            parser::Ast::Int(i) => Data::Int(*i as f32),
+            parser::Ast::Int(i) => Data::Int(*i as i64),
             parser::Ast::Identifier(id) => match variables.get(id) {
                 Some(value) => value.clone(),
                 None => {
@@ -164,16 +164,16 @@ mod tests {
         let ast = parser::Ast::Int(42);
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Int(42.0));
+        assert_eq!(result, Data::Int(42));
     }
 
     #[test]
     fn test_evaluate_identifier() {
         let ast = parser::Ast::Identifier("x".to_string());
         let mut variables = HashMap::new();
-        variables.insert("x".to_string(), Data::Int(42.0));
+        variables.insert("x".to_string(), Data::Int(42));
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Int(42.0));
+        assert_eq!(result, Data::Int(42));
     }
 
     #[test]
@@ -187,7 +187,7 @@ mod tests {
         };
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Int(5.0));
+        assert_eq!(result, Data::Int(5));
     }
 
     #[test]
@@ -210,7 +210,7 @@ mod tests {
         let result = ast.evaluate(&variables);
         assert_eq!(
             result,
-            Data::Array(vec![Data::Int(1.0), Data::Int(2.0), Data::Int(3.0)])
+            Data::Array(vec![Data::Int(1), Data::Int(2), Data::Int(3)])
         );
     }
 
