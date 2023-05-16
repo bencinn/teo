@@ -85,8 +85,29 @@ impl Program {
                                 }
                                 let mut local_variables = HashMap::new();
                                 for (i, arg) in args.iter().enumerate() {
-                                    let (name, _) = &params[i];
+                                    let (name, dtype) = &params[i];
                                     let value = arg.evaluate(&self.variable);
+                                    match dtype.as_str() {
+                                        "Integer" => {
+                                            if let Data::Int(_) = value {
+                                            } else {
+                                                panic!("Wrong type: expected {}", dtype);
+                                            }
+                                        }
+                                        "String" => {
+                                            if let Data::String(_) = value {
+                                            } else {
+                                                panic!("Wrong type: expected {}", dtype);
+                                            }
+                                        }
+                                        "Array" => {
+                                            if let Data::Array(_) = value {
+                                            } else {
+                                                panic!("Wrong type: expected {}", dtype);
+                                            }
+                                        }
+                                        _ => panic!("Wrong type: {}", dtype),
+                                    }
                                     local_variables.insert(name.clone(), value);
                                 }
                                 let mut program = Program {
