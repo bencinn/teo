@@ -38,7 +38,7 @@ impl Program {
             match command {
                 parser::Ast::Set { id, expr } => {
                     let value = expr.evaluate(&self.variable);
-                    self.variable.insert(id.clone(), value);
+                    self.variable.insert(id.to_string(), value);
                 }
                 parser::Ast::FunctionDefinition { id, params, body } => {
                     if self.function.contains_key(id) | self.std_commands.contains(id) {
@@ -149,6 +149,21 @@ impl Evaluate for parser::Ast {
                     array_data.push(element_data);
                 }
                 Data::Array(array_data)
+            }
+            parser::Ast::ArrayCall { id, k } => {
+                if let Some(array) = variables.get(id) {
+                    if let Data::Array(elements) = array {
+                        let index = k.evaluate(variables).as_float() as usize;
+                        if index >= elements.len() {
+                            panic!("Error: array index out of bounds");
+                        }
+                        elements[index].clone()
+                    } else {
+                        panic!("Error: variable {} is not an array", id);
+                    }
+                } else {
+                    panic!("Error: array variable not found: {}", id);
+                }
             }
             _ => panic!("Invalid AST node"),
         }

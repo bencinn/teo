@@ -12,7 +12,7 @@ pub enum Ast {
         right: Box<Ast>,
     },
     Set {
-        id: String,
+        id: Box<Ast>,
         expr: Box<Ast>,
     },
     FunctionDefinition {
@@ -25,6 +25,10 @@ pub enum Ast {
         args: Vec<Ast>,
     },
     Array(Vec<Ast>),
+    ArrayCall {
+        id: String,
+        k: Box<Ast>,
+    },
 }
 impl fmt::Display for Ast {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -72,6 +76,9 @@ impl fmt::Display for Ast {
                 }
                 write!(f, "]")
             }
+            Ast::ArrayCall { id, k } => {
+                write!(f, "ArrayCall({}, {})", id, k)
+            }
         }
     }
 }
@@ -85,13 +92,17 @@ peg::parser! {
         rule array() -> Ast
             = "[" _ values:(expression() ** ("," _)) _ "]"
             { Ast::Array(values) }
+        rule array_call() -> Ast
+            = id:identifier() _ "[" _ k:expression() _ "]"
+            { Ast::ArrayCall { id: id.to_string(), k: Box::new(k) } }
 
         rule atom() -> Ast =
             integer() /
             string() /
             identifier()
 
-        rule assignment() -> Ast = id:identifier() _ "=" _ expr:expression() { Ast::Set{ id: id.to_string(), expr: Box::new(expr) } }
+        rule assignment_to_elem() -> Ast = id:array_call() _ "=" _ expr:expression() { Ast::Set{ id: Box::new(id), expr: Box::new(expr) } }
+        rule assignment() -> Ast = id:identifier() _ "=" _ expr:expression() { Ast::Set{ id: Box::new(Ast::Identifier(id.to_string())), expr: Box::new(expr) } }
         rule function_param() -> (String, String) = id:identifier() _ ":" _ idtype:identifier() {(id.to_string(), idtype.to_string())}
         rule function() -> Ast
             = "def" _ id:identifier() _ "(" _ params:(function_param() ** ("," _)) _ ")" _ "{" _ body:(expression() ** (_ ";" _)) _ ";" _ "}"
@@ -102,10 +113,12 @@ peg::parser! {
         }
 
         rule factor() -> Ast
-            = assignment() /
+            = assignment_to_elem() /
+            assignment() /
             function() /
             function_call() /
             array() /
+            array_call() /
             atom() /
             "(" _ expr:expression() _ ")" { expr }
 
@@ -124,7 +137,7 @@ impl Ast {
     pub fn parse_code(block: &str) -> Result<Vec<Ast>, peg::error::ParseError<peg::str::LineCol>> {
         match ast_parser::program(block) {
             Ok(ast) => {
-                println!("{:?}", ast);
+                println!("{:#?}", ast);
                 Ok(ast)
             }
             Err(e) => {
