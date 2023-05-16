@@ -77,7 +77,10 @@ impl Program {
                     } else if let Some(func) = self.function.get(id) {
                         match func {
                             parser::Ast::FunctionDefinition { params, body, .. } => {
-                                if params.len() != args.len() {
+                                if params.len() < args.len() {
+                                    panic!("Too many argument",);
+                                }
+                                if params.len() > args.len() {
                                     panic!("Not enough argument",);
                                 }
                                 let mut local_variables = HashMap::new();
