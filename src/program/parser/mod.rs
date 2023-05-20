@@ -29,6 +29,7 @@ pub enum Ast {
         id: String,
         k: Box<Ast>,
     },
+    Bool(bool),
 }
 impl fmt::Display for Ast {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -79,6 +80,7 @@ impl fmt::Display for Ast {
             Ast::ArrayCall { id, k } => {
                 write!(f, "ArrayCall({}, {})", id, k)
             }
+            Ast::Bool(k) => write!(f, "{}", if *k { "true" } else { "false" }),
         }
     }
 }
@@ -97,6 +99,8 @@ peg::parser! {
             { Ast::ArrayCall { id: id.to_string(), k: Box::new(k) } }
 
         rule atom() -> Ast =
+            "true" { Ast::Bool(true) } /
+            "false" { Ast::Bool(false) } /
             integer() /
             string() /
             identifier()

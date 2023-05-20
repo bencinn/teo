@@ -14,12 +14,20 @@ pub enum Data {
     String(String),
     Int(i64),
     Array(Vec<Data>),
+    Bool(bool),
 }
 
 impl Data {
     fn as_float(&self) -> i64 {
         match self {
             Data::Int(i) => *i,
+            Data::Bool(b) => {
+                if *b {
+                    1
+                } else {
+                    0
+                }
+            }
             _ => panic!("Data is not convertable"),
         }
     }
@@ -27,6 +35,7 @@ impl Data {
         match self {
             Data::Int(i) => i.to_string(),
             Data::String(i) => i.clone(),
+            Data::Bool(b) => b.to_string(),
             _ => panic!("Data is not convertable"),
         }
     }
@@ -143,6 +152,7 @@ impl Evaluate for parser::Ast {
     fn evaluate(&self, variables: &HashMap<String, Data>) -> Data {
         match self {
             parser::Ast::Int(i) => Data::Int(*i as i64),
+            parser::Ast::Bool(b) => Data::Bool(*b),
             parser::Ast::Identifier(id) => match variables.get(id) {
                 Some(value) => value.clone(),
                 None => {

@@ -9,4 +9,6 @@ a = x[1] + 2;
 x[1] = 3;
 print(a);
 print(x[1]);
+lbozo = true;
+print(lbozo);
 return(0);
