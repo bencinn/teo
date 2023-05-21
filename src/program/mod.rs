@@ -18,7 +18,7 @@ pub enum Data {
 }
 
 impl Data {
-    fn as_float(&self) -> i64 {
+    fn as_int(&self) -> i64 {
         match self {
             Data::Int(i) => *i,
             Data::Bool(b) => {
@@ -76,7 +76,7 @@ impl Program {
                             "return" => {
                                 if let Some(arg) = args.first() {
                                     let value = arg.evaluate(&self.variable);
-                                    exit(value.as_float() as i32);
+                                    exit(value.as_int() as i32);
                                 } else {
                                     panic!("Need exit code");
                                 }
@@ -162,8 +162,8 @@ impl Evaluate for parser::Ast {
             parser::Ast::BinaryOp { op, left, right } => {
                 let left_value = left.evaluate(variables);
                 let right_value = right.evaluate(variables);
-                let f1 = left_value.as_float();
-                let f2 = right_value.as_float();
+                let f1 = left_value.as_int();
+                let f2 = right_value.as_int();
                 match op.as_str() {
                     "+" => Data::Int(f1 + f2),
                     "-" => Data::Int(f1 - f2),
@@ -184,7 +184,7 @@ impl Evaluate for parser::Ast {
             parser::Ast::ArrayCall { id, k } => {
                 if let Some(array) = variables.get(id) {
                     if let Data::Array(elements) = array {
-                        let index = k.evaluate(variables).as_float() as usize;
+                        let index = k.evaluate(variables).as_int() as usize;
                         if index >= elements.len() {
                             panic!("Error: array index out of bounds");
                         }
@@ -261,6 +261,32 @@ mod tests {
             result,
             Data::Array(vec![Data::Int(1), Data::Int(2), Data::Int(3)])
         );
+    }
+
+    use crate::program::Data;
+
+    #[test]
+    fn data_as_int() {
+        let data = Data::Int(1);
+        assert_eq!(data.as_int(), 1);
+    }
+
+    #[test]
+    fn data_as_string() {
+        let data = Data::Int(1);
+        assert_eq!(data.as_string(), "1".to_string());
+    }
+
+    #[test]
+    fn bool_as_string() {
+        let data = Data::Bool(true);
+        assert_eq!(data.as_string(), "true");
+    }
+
+    #[test]
+    fn bool_as_int() {
+        let data = Data::Bool(true);
+        assert_eq!(data.as_int(), 1);
     }
 
     use rand::{thread_rng, Rng};
