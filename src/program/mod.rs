@@ -362,7 +362,7 @@ mod tests {
             }
         });
     }
-
+    #[cfg(feature = "print")]
     #[bench]
     fn bench_run_print(b: &mut test::Bencher) {
         let code = "print(1)";
