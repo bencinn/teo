@@ -66,6 +66,7 @@ impl Program {
                     let std_functions = self.std_commands.clone();
                     if std_functions.contains(id) {
                         match id.as_str() {
+                            #[cfg(feature = "print")]
                             "print" => {
                                 for arg in args {
                                     let value = arg.evaluate(&self.variable);
@@ -73,6 +74,7 @@ impl Program {
                                     write!(&mut writer, "{}", value.as_string()).unwrap();
                                 }
                             }
+                            #[cfg(feature = "return")]
                             "return" => {
                                 if let Some(arg) = args.first() {
                                     let value = arg.evaluate(&self.variable);
@@ -81,7 +83,7 @@ impl Program {
                                     panic!("Need exit code");
                                 }
                             }
-                            _ => unreachable!(),
+                            _ => panic!("Function isn't enabled"),
                         }
                     } else if let Some(func) = self.function.get(id) {
                         match func {
