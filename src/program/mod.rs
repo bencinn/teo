@@ -47,7 +47,25 @@ impl Program {
             match command {
                 parser::Ast::Set { id, expr } => {
                     let value = expr.evaluate(&self.variable);
-                    self.variable.insert(id.to_string(), value);
+                    match id.as_ref() {
+                        parser::Ast::ArrayCall { id: array_id, k } => {
+                            let index = k.evaluate(&self.variable).as_int() as usize;
+
+                            let array = self.variable.get_mut(array_id);
+                            if let Some(array) = array {
+                                if let Data::Array(elements) = array {
+                                    elements[index] = value;
+                                } else {
+                                    panic!("Variable is not an array");
+                                }
+                            } else {
+                                panic!("Variable not found: {}", array_id);
+                            }
+                        }
+                        _ => {
+                            self.variable.insert(id.to_string(), value);
+                        }
+                    };
                 }
                 parser::Ast::FunctionDefinition { id, params, body } => {
                     if self.function.contains_key(id) | self.std_commands.contains(id) {
