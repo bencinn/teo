@@ -169,6 +169,12 @@ impl Evaluate for parser::Ast {
                     "-" => Data::Int(f1 - f2),
                     "*" => Data::Int(f1 * f2),
                     "/" => Data::Int(f1 / f2),
+                    "==" => Data::Bool(f1 == f2),
+                    "!=" => Data::Bool(f1 != f2),
+                    "<" => Data::Bool(f1 < f2),
+                    ">" => Data::Bool(f1 > f2),
+                    "<=" => Data::Bool(f1 <= f2),
+                    ">=" => Data::Bool(f1 >= f2),
                     _ => panic!("{} is not a valid binary operator", op),
                 }
             }

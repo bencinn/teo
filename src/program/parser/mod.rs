@@ -116,6 +116,20 @@ peg::parser! {
             {Ast::FunctionCall {id: id.to_string(), args,}
         }
 
+        rule comparison_op() -> String
+            = "<=" { "<=".to_string() }
+            / ">=" { ">=".to_string() }
+            / "==" { "==".to_string() }
+            / "!=" { "!=".to_string() }
+            / "<" { "<".to_string() }
+            / ">" { ">".to_string() }
+
+        rule comparison() -> Ast
+            = left:term() _ op:comparison_op() _ right:term()
+                { Ast::BinaryOp{ op, left: Box::new(left), right: Box::new(right) } } /
+                term()
+
+
         rule factor() -> Ast
             = assignment_to_elem() /
             assignment() /
@@ -131,9 +145,10 @@ peg::parser! {
                 { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
                 factor()
 
-        rule expression() -> Ast = left:term() _ op:$(['+' | '-']) _ right:expression()
-                                        { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
-                                        term()
+        rule expression() -> Ast
+            = left:comparison() _ op:$(['+' | '-' | '*' | '/']) _ right:expression()
+                { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
+                comparison()
         pub rule program() -> Vec<Ast> = _ exprs:(expression() ** (";" _)) _ ";"? _ { exprs }
         }
 }
