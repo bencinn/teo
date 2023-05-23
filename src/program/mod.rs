@@ -155,7 +155,7 @@ impl Program {
                             _ => panic!("`{}` is not a function", id),
                         }
                     } else {
-                        panic!("Function `{}` not defined", id);
+                        panic!("Function `{}` is not defined", id);
                     }
                 }
                 _ => {}
