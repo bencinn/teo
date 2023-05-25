@@ -23,7 +23,10 @@ struct Args {
 fn main() {
     let args = Args::parse();
     let vec_ast = match program::parser::Ast::parse_code(
-        fs::read_to_string(args.file_name).unwrap().as_str(),
+        fs::read_to_string(args.file_name)
+            .unwrap()
+            .replace("\r\n", "")
+            .as_str(),
     ) {
         Ok(ast) => ast,
         Err(_e) => {
