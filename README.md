@@ -12,4 +12,5 @@ Teo is a programming language that was designed for kids.
     - [ ] Error detection before running
     - [x] Getting faster as a whole
     - [ ] Better error message
-- [ ] If-Else statement
+- [x] If statement
+- [ ] Else statement
