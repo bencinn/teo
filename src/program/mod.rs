@@ -67,6 +67,29 @@ impl Program {
                         }
                     };
                 }
+                parser::Ast::If { condition, block } => {
+                    let conditionresult = condition.evaluate(&self.variable);
+                    match conditionresult {
+                        Data::Bool(e) => {
+                            if e {
+                                let mut program = Program {
+                                    commands: block.clone(),
+                                    current_line: 0,
+                                    panic: false,
+                                    variable: self.variable.clone(),
+                                    function: self.function.clone(),
+                                    std_commands: self.std_commands.clone(),
+                                };
+                                program.run_loop(writer);
+                                if program.panic {
+                                    panic!("Code block within If-else failed to run");
+                                }
+                                self.variable = program.variable;
+                            }
+                        }
+                        _ => unimplemented!(),
+                    };
+                }
                 parser::Ast::FunctionDefinition { id, params, body } => {
                     if self.function.contains_key(id) | self.std_commands.contains(id) {
                         panic!("Function `{}` already exist", id);

@@ -30,6 +30,10 @@ pub enum Ast {
         k: Box<Ast>,
     },
     Bool(bool),
+    If {
+        condition: Box<Ast>,
+        block: Vec<Ast>,
+    },
 }
 impl fmt::Display for Ast {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -81,6 +85,12 @@ impl fmt::Display for Ast {
                 write!(f, "ArrayCall({}, {})", id, k)
             }
             Ast::Bool(k) => write!(f, "{}", if *k { "true" } else { "false" }),
+            Ast::If {
+                condition: _,
+                block: _,
+            } => {
+                unimplemented!()
+            }
         }
     }
 }
@@ -129,9 +139,13 @@ peg::parser! {
                 { Ast::BinaryOp{ op, left: Box::new(left), right: Box::new(right) } } /
                 term()
 
+        rule ifs() -> Ast
+            = "if" _ "(" _ comparison:comparison() _ ")" _ "{" _ body:(expression() ** (_ ";" _)) _ ";" _ "}"
+            {Ast::If {condition: Box::new(comparison), block: body}}
 
         rule factor() -> Ast
-            = assignment_to_elem() /
+            = ifs() /
+            assignment_to_elem() /
             assignment() /
             function() /
             function_call() /
