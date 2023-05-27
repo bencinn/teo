@@ -56,10 +56,10 @@ impl Program {
                                 if let Data::Array(elements) = array {
                                     elements[index] = value;
                                 } else {
-                                    panic!("Variable is not an array");
+                                    panic!("Variable {} is not an array, cannot modify!", id.to_string());
                                 }
                             } else {
-                                panic!("Variable not found: {}", array_id);
+                                panic!("Variable (array) not found: {}", array_id);
                             }
                         }
                         _ => {
@@ -82,7 +82,7 @@ impl Program {
                                 };
                                 program.run_loop(writer);
                                 if program.panic {
-                                    panic!("Code block within If-else failed to run");
+                                    panic!("Code block within If-else panicked!");
                                 }
                                 self.variable = program.variable;
                             }
@@ -92,7 +92,7 @@ impl Program {
                 }
                 parser::Ast::FunctionDefinition { id, params, body } => {
                     if self.function.contains_key(id) | self.std_commands.contains(id) {
-                        panic!("Function `{}` already exist", id);
+                        panic!("Function `{}` already exist!", id);
                     }
                     self.function.insert(
                         id.clone(),
@@ -121,7 +121,7 @@ impl Program {
                                     let value = arg.evaluate(&self.variable);
                                     exit(value.as_int() as i32);
                                 } else {
-                                    panic!("Need exit code");
+                                    panic!("Need exit code for the return function!");
                                 }
                             }
                             _ => panic!("Function isn't enabled"),
@@ -130,10 +130,10 @@ impl Program {
                         match func {
                             parser::Ast::FunctionDefinition { params, body, .. } => {
                                 if params.len() < args.len() {
-                                    panic!("Too many argument",);
+                                    panic!("Too many argument!",);
                                 }
                                 if params.len() > args.len() {
-                                    panic!("Not enough argument",);
+                                    panic!("Not enough argument!",);
                                 }
                                 let mut local_variables = HashMap::new();
                                 for (i, arg) in args.iter().enumerate() {
@@ -143,22 +143,22 @@ impl Program {
                                         "Integer" => {
                                             if let Data::Int(_) = value {
                                             } else {
-                                                panic!("Wrong type: expected {}", dtype);
+                                                panic!("Wrong type for function: expected {}!", dtype);
                                             }
                                         }
                                         "String" => {
                                             if let Data::String(_) = value {
                                             } else {
-                                                panic!("Wrong type: expected {}", dtype);
+                                                panic!("Wrong type for function: expected {}!", dtype);
                                             }
                                         }
                                         "Array" => {
                                             if let Data::Array(_) = value {
                                             } else {
-                                                panic!("Wrong type: expected {}", dtype);
+                                                panic!("Wrong type for function: expected {}!", dtype);
                                             }
                                         }
-                                        _ => panic!("Wrong type: {}", dtype),
+                                        _ => panic!("Type does not exist: {}! Only types exist are Integer, String, and Array", dtype),
                                     }
                                     local_variables.insert(name.clone(), value);
                                 }
@@ -172,13 +172,13 @@ impl Program {
                                 };
                                 program.run_loop(writer);
                                 if program.panic {
-                                    panic!("Function `{}` panicked", id);
+                                    panic!("Function `{}` panicked!", id);
                                 }
                             }
-                            _ => panic!("`{}` is not a function", id),
+                            _ => panic!("`{}` is not a function!", id),
                         }
                     } else {
-                        panic!("Function `{}` is not defined", id);
+                        panic!("Function `{}` is not defined!", id);
                     }
                 }
                 _ => {}

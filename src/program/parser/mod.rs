@@ -174,6 +174,7 @@ impl Ast {
                 Ok(ast)
             }
             Err(e) => {
+                println!("Unable to parse!");
                 println!("{}", e);
                 Err(e)
             }
