@@ -56,7 +56,10 @@ impl Program {
                                 if let Data::Array(elements) = array {
                                     elements[index] = value;
                                 } else {
-                                    panic!("Variable {} is not an array, cannot modify!", id.to_string());
+                                    panic!(
+                                        "Variable {} is not an array, cannot modify!",
+                                        id.to_string()
+                                    );
                                 }
                             } else {
                                 panic!("Variable (array) not found: {}", array_id);
@@ -158,7 +161,13 @@ impl Program {
                                                 panic!("Wrong type for function: expected {}!", dtype);
                                             }
                                         }
-                                        _ => panic!("Type does not exist: {}! Only types exist are Integer, String, and Array", dtype),
+                                        "Bool" => {
+                                            if let Data::Bool(_) = value {
+                                            } else {
+                                                panic!("Wrong type for function: expected {}!", dtype);
+                                            }
+                                        }
+                                        _ => panic!("Type does not exist: {}! Only types exist are Integer, String, Bool and Array", dtype),
                                     }
                                     local_variables.insert(name.clone(), value);
                                 }
