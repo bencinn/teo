@@ -12,7 +12,7 @@ pub struct Program {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Data {
     String(String),
-    Int(f64),
+    Number(f64),
     Array(Vec<Data>),
     Bool(bool),
 }
@@ -20,7 +20,7 @@ pub enum Data {
 impl Data {
     fn as_number(&self) -> f64 {
         match self {
-            Data::Int(i) => *i,
+            Data::Number(i) => *i,
             Data::Bool(b) => {
                 if *b {
                     1.0
@@ -33,7 +33,7 @@ impl Data {
     }
     fn as_string(&self) -> String {
         match self {
-            Data::Int(i) => i.to_string(),
+            Data::Number(i) => i.to_string(),
             Data::String(i) => i.clone(),
             Data::Bool(b) => b.to_string(),
             _ => panic!("Data is not convertable"),
@@ -144,7 +144,7 @@ impl Program {
                                     let value = arg.evaluate(&self.variable);
                                     match dtype.as_str() {
                                         "Integer" => {
-                                            if let Data::Int(_) = value {
+                                            if let Data::Number(_) = value {
                                             } else {
                                                 panic!("Wrong type for function: expected {}!", dtype);
                                             }
@@ -203,7 +203,7 @@ trait Evaluate {
 impl Evaluate for parser::Ast {
     fn evaluate(&self, variables: &HashMap<String, Data>) -> Data {
         match self {
-            parser::Ast::Int(i) => Data::Int(*i as f64),
+            parser::Ast::Int(i) => Data::Number(*i as f64),
             parser::Ast::Bool(b) => Data::Bool(*b),
             parser::Ast::Identifier(id) => match variables.get(id) {
                 Some(value) => value.clone(),
@@ -217,10 +217,10 @@ impl Evaluate for parser::Ast {
                 let f1 = left_value.as_number();
                 let f2 = right_value.as_number();
                 match op.as_str() {
-                    "+" => Data::Int(f1 + f2),
-                    "-" => Data::Int(f1 - f2),
-                    "*" => Data::Int(f1 * f2),
-                    "/" => Data::Int(f1 / f2),
+                    "+" => Data::Number(f1 + f2),
+                    "-" => Data::Number(f1 - f2),
+                    "*" => Data::Number(f1 * f2),
+                    "/" => Data::Number(f1 / f2),
                     "==" => Data::Bool(f1 == f2),
                     "!=" => Data::Bool(f1 != f2),
                     "<" => Data::Bool(f1 < f2),
@@ -271,16 +271,24 @@ mod tests {
         let ast = parser::Ast::Int(42.0);
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Int(42.0));
+        assert_eq!(result, Data::Number(42.0));
+    }
+
+    #[test]
+    fn test_evaluate_float() {
+        let ast = parser::Ast::Int(35.8);
+        let variables = HashMap::new();
+        let result = ast.evaluate(&variables);
+        assert_eq!(result, Data::Number(35.8));
     }
 
     #[test]
     fn test_evaluate_identifier() {
         let ast = parser::Ast::Identifier("x".to_string());
         let mut variables = HashMap::new();
-        variables.insert("x".to_string(), Data::Int(42.0));
+        variables.insert("x".to_string(), Data::Number(42.0));
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Int(42.0));
+        assert_eq!(result, Data::Number(42.0));
     }
 
     #[test]
@@ -294,7 +302,7 @@ mod tests {
         };
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Int(5.0));
+        assert_eq!(result, Data::Number(5.0));
     }
 
     #[test]
@@ -317,21 +325,25 @@ mod tests {
         let result = ast.evaluate(&variables);
         assert_eq!(
             result,
-            Data::Array(vec![Data::Int(1.0), Data::Int(2.0), Data::Int(3.0)])
+            Data::Array(vec![
+                Data::Number(1.0),
+                Data::Number(2.0),
+                Data::Number(3.0)
+            ])
         );
     }
 
     use crate::program::Data;
 
     #[test]
-    fn data_as_int() {
-        let data = Data::Int(1.0);
+    fn data_as_number() {
+        let data = Data::Number(1.0);
         assert_eq!(data.as_number(), 1.0);
     }
 
     #[test]
     fn data_as_string() {
-        let data = Data::Int(1.0);
+        let data = Data::Number(1.0);
         assert_eq!(data.as_string(), "1".to_string());
     }
 
@@ -342,7 +354,7 @@ mod tests {
     }
 
     #[test]
-    fn bool_as_int() {
+    fn bool_as_number() {
         let data = Data::Bool(true);
         assert_eq!(data.as_number(), 1.0);
     }
