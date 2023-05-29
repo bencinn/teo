@@ -4,7 +4,7 @@ use std::fmt;
 #[derive(Debug, Clone)]
 pub enum Ast {
     String(String),
-    Int(i64),
+    Int(f64),
     Identifier(String),
     BinaryOp {
         op: String,
@@ -98,7 +98,8 @@ impl fmt::Display for Ast {
 peg::parser! {
     grammar ast_parser() for str {
         rule _() = [' '| '\t'| '\n']*
-        rule integer() -> Ast = n:$(['0'..='9']+) { Ast::Int(n.parse().unwrap()) }
+        // rule integer() -> Ast = n:$(['0'..='9']+) { Ast::Int(n.parse().unwrap()) }
+        rule integer() -> Ast = n:$(['0'..='9']+ ("." ['0'..='9']+)?) { Ast::Int(n.parse().unwrap()) }
         rule string() -> Ast = "\"" s:$([^'"']*) "\"" { Ast::String(s.to_string()) }
         rule identifier() -> Ast = s:$(['a'..='z' | 'A'..='Z' | '_']['a'..='z' | 'A'..='Z' | '_' | '0'..='9']*) { Ast::Identifier(s.to_string()) }
         rule array() -> Ast

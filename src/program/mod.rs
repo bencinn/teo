@@ -12,20 +12,20 @@ pub struct Program {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Data {
     String(String),
-    Int(i64),
+    Number(f64),
     Array(Vec<Data>),
     Bool(bool),
 }
 
 impl Data {
-    fn as_int(&self) -> i64 {
+    fn as_number(&self) -> f64 {
         match self {
-            Data::Int(i) => *i,
+            Data::Number(i) => *i,
             Data::Bool(b) => {
                 if *b {
-                    1
+                    1.0
                 } else {
-                    0
+                    0.0
                 }
             }
             _ => panic!("Data is not convertable"),
@@ -33,7 +33,7 @@ impl Data {
     }
     fn as_string(&self) -> String {
         match self {
-            Data::Int(i) => i.to_string(),
+            Data::Number(i) => i.to_string(),
             Data::String(i) => i.clone(),
             Data::Bool(b) => b.to_string(),
             _ => panic!("Data is not convertable"),
@@ -49,7 +49,7 @@ impl Program {
                     let value = expr.evaluate(&self.variable);
                     match id.as_ref() {
                         parser::Ast::ArrayCall { id: array_id, k } => {
-                            let index = k.evaluate(&self.variable).as_int() as usize;
+                            let index = k.evaluate(&self.variable).as_number() as usize;
 
                             let array = self.variable.get_mut(array_id);
                             if let Some(array) = array {
@@ -122,7 +122,7 @@ impl Program {
                             "return" => {
                                 if let Some(arg) = args.first() {
                                     let value = arg.evaluate(&self.variable);
-                                    exit(value.as_int() as i32);
+                                    exit(value.as_number() as i32);
                                 } else {
                                     panic!("Need exit code for the return function!");
                                 }
@@ -144,7 +144,7 @@ impl Program {
                                     let value = arg.evaluate(&self.variable);
                                     match dtype.as_str() {
                                         "Integer" => {
-                                            if let Data::Int(_) = value {
+                                            if let Data::Number(_) = value {
                                             } else {
                                                 panic!("Wrong type for function: expected {}!", dtype);
                                             }
@@ -203,7 +203,7 @@ trait Evaluate {
 impl Evaluate for parser::Ast {
     fn evaluate(&self, variables: &HashMap<String, Data>) -> Data {
         match self {
-            parser::Ast::Int(i) => Data::Int(*i as i64),
+            parser::Ast::Int(i) => Data::Number(*i as f64),
             parser::Ast::Bool(b) => Data::Bool(*b),
             parser::Ast::Identifier(id) => match variables.get(id) {
                 Some(value) => value.clone(),
@@ -214,13 +214,13 @@ impl Evaluate for parser::Ast {
             parser::Ast::BinaryOp { op, left, right } => {
                 let left_value = left.evaluate(variables);
                 let right_value = right.evaluate(variables);
-                let f1 = left_value.as_int();
-                let f2 = right_value.as_int();
+                let f1 = left_value.as_number();
+                let f2 = right_value.as_number();
                 match op.as_str() {
-                    "+" => Data::Int(f1 + f2),
-                    "-" => Data::Int(f1 - f2),
-                    "*" => Data::Int(f1 * f2),
-                    "/" => Data::Int(f1 / f2),
+                    "+" => Data::Number(f1 + f2),
+                    "-" => Data::Number(f1 - f2),
+                    "*" => Data::Number(f1 * f2),
+                    "/" => Data::Number(f1 / f2),
                     "==" => Data::Bool(f1 == f2),
                     "!=" => Data::Bool(f1 != f2),
                     "<" => Data::Bool(f1 < f2),
@@ -242,7 +242,7 @@ impl Evaluate for parser::Ast {
             parser::Ast::ArrayCall { id, k } => {
                 if let Some(array) = variables.get(id) {
                     if let Data::Array(elements) = array {
-                        let index = k.evaluate(variables).as_int() as usize;
+                        let index = k.evaluate(variables).as_number() as usize;
                         if index >= elements.len() {
                             panic!("Error: array index out of bounds");
                         }
@@ -268,25 +268,33 @@ mod tests {
 
     #[test]
     fn test_evaluate_int() {
-        let ast = parser::Ast::Int(42);
+        let ast = parser::Ast::Int(42.0);
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Int(42));
+        assert_eq!(result, Data::Number(42.0));
+    }
+
+    #[test]
+    fn test_evaluate_float() {
+        let ast = parser::Ast::Int(35.8);
+        let variables = HashMap::new();
+        let result = ast.evaluate(&variables);
+        assert_eq!(result, Data::Number(35.8));
     }
 
     #[test]
     fn test_evaluate_identifier() {
         let ast = parser::Ast::Identifier("x".to_string());
         let mut variables = HashMap::new();
-        variables.insert("x".to_string(), Data::Int(42));
+        variables.insert("x".to_string(), Data::Number(42.0));
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Int(42));
+        assert_eq!(result, Data::Number(42.0));
     }
 
     #[test]
     fn test_evaluate_binary_op() {
-        let left = parser::Ast::Int(2);
-        let right = parser::Ast::Int(3);
+        let left = parser::Ast::Int(2.0);
+        let right = parser::Ast::Int(3.0);
         let ast = parser::Ast::BinaryOp {
             op: "+".to_string(),
             left: Box::new(left),
@@ -294,7 +302,7 @@ mod tests {
         };
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Int(5));
+        assert_eq!(result, Data::Number(5.0));
     }
 
     #[test]
@@ -308,30 +316,34 @@ mod tests {
     #[test]
     fn test_evaluate_array() {
         let elements = vec![
-            parser::Ast::Int(1),
-            parser::Ast::Int(2),
-            parser::Ast::Int(3),
+            parser::Ast::Int(1.0),
+            parser::Ast::Int(2.0),
+            parser::Ast::Int(3.0),
         ];
         let ast = parser::Ast::Array(elements);
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
         assert_eq!(
             result,
-            Data::Array(vec![Data::Int(1), Data::Int(2), Data::Int(3)])
+            Data::Array(vec![
+                Data::Number(1.0),
+                Data::Number(2.0),
+                Data::Number(3.0)
+            ])
         );
     }
 
     use crate::program::Data;
 
     #[test]
-    fn data_as_int() {
-        let data = Data::Int(1);
-        assert_eq!(data.as_int(), 1);
+    fn data_as_number() {
+        let data = Data::Number(1.0);
+        assert_eq!(data.as_number(), 1.0);
     }
 
     #[test]
     fn data_as_string() {
-        let data = Data::Int(1);
+        let data = Data::Number(1.0);
         assert_eq!(data.as_string(), "1".to_string());
     }
 
@@ -342,9 +354,9 @@ mod tests {
     }
 
     #[test]
-    fn bool_as_int() {
+    fn bool_as_number() {
         let data = Data::Bool(true);
-        assert_eq!(data.as_int(), 1);
+        assert_eq!(data.as_number(), 1.0);
     }
 
     use rand::{thread_rng, Rng};
@@ -353,7 +365,7 @@ mod tests {
     fn bench_evaluate_int(b: &mut test::Bencher) {
         let mut rng = thread_rng();
         let value = rng.gen_range(10000..50000);
-        let ast = parser::Ast::Int(value);
+        let ast = parser::Ast::Int(value as f64);
         let variables = HashMap::new();
         b.iter(|| test::black_box(ast.evaluate(&variables)));
     }
@@ -363,8 +375,8 @@ mod tests {
         let mut rng = thread_rng();
         let left_value = rng.gen_range(10000..50000);
         let right_value = rng.gen_range(10000..50000);
-        let left = parser::Ast::Int(left_value);
-        let right = parser::Ast::Int(right_value);
+        let left = parser::Ast::Int(left_value as f64);
+        let right = parser::Ast::Int(right_value as f64);
         let asts = vec![
             parser::Ast::BinaryOp {
                 op: "+".to_string(),
