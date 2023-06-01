@@ -1,4 +1,6 @@
 use std::{collections::HashMap, process::exit};
+use rust_decimal::prelude::*;
+use rust_decimal_macros::dec;
 pub mod parser;
 pub struct Program {
     pub commands: Vec<parser::Ast>,
@@ -12,20 +14,20 @@ pub struct Program {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Data {
     String(String),
-    Number(f64),
+    Number(Decimal),
     Array(Vec<Data>),
     Bool(bool),
 }
 
 impl Data {
-    fn as_number(&self) -> f64 {
+    fn as_number(&self) -> Decimal {
         match self {
             Data::Number(i) => *i,
             Data::Bool(b) => {
                 if *b {
-                    1.0
+                    dec!(1)
                 } else {
-                    0.0
+                    dec!(0)
                 }
             }
             _ => panic!("Data is not convertable"),
@@ -33,7 +35,7 @@ impl Data {
     }
     fn as_string(&self) -> String {
         match self {
-            Data::Number(i) => i.to_string(),
+            Data::Number(i) => i.normalize().to_string(),
             Data::String(i) => i.clone(),
             Data::Bool(b) => b.to_string(),
             _ => panic!("Data is not convertable"),
@@ -49,7 +51,7 @@ impl Program {
                     let value = expr.evaluate(&self.variable);
                     match id.as_ref() {
                         parser::Ast::ArrayCall { id: array_id, k } => {
-                            let index = k.evaluate(&self.variable).as_number() as usize;
+                            let index = k.evaluate(&self.variable).as_number().to_usize().unwrap();
 
                             let array = self.variable.get_mut(array_id);
                             if let Some(array) = array {
@@ -122,7 +124,7 @@ impl Program {
                             "return" => {
                                 if let Some(arg) = args.first() {
                                     let value = arg.evaluate(&self.variable);
-                                    exit(value.as_number() as i32);
+                                    exit(value.as_number().to_i32().unwrap());
                                 } else {
                                     panic!("Need exit code for the return function!");
                                 }
@@ -203,7 +205,7 @@ trait Evaluate {
 impl Evaluate for parser::Ast {
     fn evaluate(&self, variables: &HashMap<String, Data>) -> Data {
         match self {
-            parser::Ast::Int(i) => Data::Number(*i as f64),
+            parser::Ast::Int(i) => Data::Number(*i),
             parser::Ast::Bool(b) => Data::Bool(*b),
             parser::Ast::Identifier(id) => match variables.get(id) {
                 Some(value) => value.clone(),
@@ -242,7 +244,7 @@ impl Evaluate for parser::Ast {
             parser::Ast::ArrayCall { id, k } => {
                 if let Some(array) = variables.get(id) {
                     if let Data::Array(elements) = array {
-                        let index = k.evaluate(variables).as_number() as usize;
+                        let index = k.evaluate(variables).as_number().to_usize().unwrap();
                         if index >= elements.len() {
                             panic!("Error: array index out of bounds");
                         }
@@ -268,33 +270,33 @@ mod tests {
 
     #[test]
     fn test_evaluate_int() {
-        let ast = parser::Ast::Int(42.0);
+        let ast = parser::Ast::Int(Decimal::from(42));
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Number(42.0));
+        assert_eq!(result, Data::Number(Decimal::from(42)));
     }
 
     #[test]
     fn test_evaluate_float() {
-        let ast = parser::Ast::Int(35.8);
+        let ast = parser::Ast::Int(Decimal::from_f64(35.8 as f64).unwrap());
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Number(35.8));
+        assert_eq!(result, Data::Number(Decimal::from_f64(35.8 as f64).unwrap()));
     }
 
     #[test]
     fn test_evaluate_identifier() {
         let ast = parser::Ast::Identifier("x".to_string());
         let mut variables = HashMap::new();
-        variables.insert("x".to_string(), Data::Number(42.0));
+        variables.insert("x".to_string(), Data::Number(Decimal::from(42)));
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Number(42.0));
+        assert_eq!(result, Data::Number(Decimal::from(42)));
     }
 
     #[test]
     fn test_evaluate_binary_op() {
-        let left = parser::Ast::Int(2.0);
-        let right = parser::Ast::Int(3.0);
+        let left = parser::Ast::Int(Decimal::from(2));
+        let right = parser::Ast::Int(Decimal::from(3));
         let ast = parser::Ast::BinaryOp {
             op: "+".to_string(),
             left: Box::new(left),
@@ -302,7 +304,7 @@ mod tests {
         };
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Number(5.0));
+        assert_eq!(result, Data::Number(Decimal::from(5)));
     }
 
     #[test]
@@ -316,9 +318,9 @@ mod tests {
     #[test]
     fn test_evaluate_array() {
         let elements = vec![
-            parser::Ast::Int(1.0),
-            parser::Ast::Int(2.0),
-            parser::Ast::Int(3.0),
+            parser::Ast::Int(dec!(1.0)),
+            parser::Ast::Int(dec!(2.0)),
+            parser::Ast::Int(dec!(3.0)),
         ];
         let ast = parser::Ast::Array(elements);
         let variables = HashMap::new();
@@ -326,9 +328,9 @@ mod tests {
         assert_eq!(
             result,
             Data::Array(vec![
-                Data::Number(1.0),
-                Data::Number(2.0),
-                Data::Number(3.0)
+                Data::Number(dec!(1.0)),
+                Data::Number(dec!(2.0)),
+                Data::Number(dec!(3.0))
             ])
         );
     }
@@ -337,13 +339,13 @@ mod tests {
 
     #[test]
     fn data_as_number() {
-        let data = Data::Number(1.0);
-        assert_eq!(data.as_number(), 1.0);
+        let data = Data::Number(dec!(1.0));
+        assert_eq!(data.as_number(), dec!(1.0));
     }
 
     #[test]
     fn data_as_string() {
-        let data = Data::Number(1.0);
+        let data = Data::Number(dec!(1.0));
         assert_eq!(data.as_string(), "1".to_string());
     }
 
@@ -356,7 +358,7 @@ mod tests {
     #[test]
     fn bool_as_number() {
         let data = Data::Bool(true);
-        assert_eq!(data.as_number(), 1.0);
+        assert_eq!(data.as_number(), dec!(1));
     }
 
     use rand::{thread_rng, Rng};
@@ -365,7 +367,7 @@ mod tests {
     fn bench_evaluate_int(b: &mut test::Bencher) {
         let mut rng = thread_rng();
         let value = rng.gen_range(10000..50000);
-        let ast = parser::Ast::Int(value as f64);
+        let ast = parser::Ast::Int(Decimal::from(value));
         let variables = HashMap::new();
         b.iter(|| test::black_box(ast.evaluate(&variables)));
     }
@@ -375,8 +377,8 @@ mod tests {
         let mut rng = thread_rng();
         let left_value = rng.gen_range(10000..50000);
         let right_value = rng.gen_range(10000..50000);
-        let left = parser::Ast::Int(left_value as f64);
-        let right = parser::Ast::Int(right_value as f64);
+        let left = parser::Ast::Int(Decimal::from(left_value));
+        let right = parser::Ast::Int(Decimal::from(right_value));
         let asts = vec![
             parser::Ast::BinaryOp {
                 op: "+".to_string(),

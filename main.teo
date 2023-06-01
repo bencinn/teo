@@ -18,5 +18,5 @@ def a(n: Bool){
     print(n);
 };
 a(true);
-print(3.2);
+print(0.1 + 0.2);
 return(0);
