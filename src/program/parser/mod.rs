@@ -1,6 +1,6 @@
 use peg;
-use std::fmt;
 use rust_decimal::Decimal;
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub enum Ast {

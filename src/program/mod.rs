@@ -1,6 +1,6 @@
-use std::{collections::HashMap, process::exit};
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
+use std::{collections::HashMap, process::exit};
 pub mod parser;
 pub struct Program {
     pub commands: Vec<parser::Ast>,
@@ -281,7 +281,10 @@ mod tests {
         let ast = parser::Ast::Int(Decimal::from_f64(35.8 as f64).unwrap());
         let variables = HashMap::new();
         let result = ast.evaluate(&variables);
-        assert_eq!(result, Data::Number(Decimal::from_f64(35.8 as f64).unwrap()));
+        assert_eq!(
+            result,
+            Data::Number(Decimal::from_f64(35.8 as f64).unwrap())
+        );
     }
 
     #[test]
