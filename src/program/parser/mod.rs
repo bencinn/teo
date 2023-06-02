@@ -156,15 +156,19 @@ peg::parser! {
             atom() /
             "(" _ expr:expression() _ ")" { expr }
 
-        rule term() -> Ast
-            = left:factor() _ op:$(['*' | '/']) _ right:term()
-                { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
-                factor()
+rule term() -> Ast
+    = left:factor() _ op:$(['*' | '/']) _ right:term()
+        { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
+      left:factor() _ op:$(['+' | '-']) _ right:term()
+        { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
+      factor()
+rule expression() -> Ast
+    = left:comparison() _ op:$(['*' | '/']) _ right:expression()
+        { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
+      left:comparison() _ op:$(['+' | '-']) _ right:expression()
+        { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
+      comparison()
 
-        rule expression() -> Ast
-            = left:comparison() _ op:$(['+' | '-' | '*' | '/']) _ right:expression()
-                { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
-                comparison()
         pub rule program() -> Vec<Ast> = _ exprs:(expression() ** (";" _)) _ ";"? _ { exprs }
         }
 }
