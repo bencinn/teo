@@ -58,10 +58,7 @@ impl Program {
                                 if let Data::Array(elements) = array {
                                     elements[index] = value;
                                 } else {
-                                    panic!(
-                                        "Variable {} is not an array, cannot modify!",
-                                        id.to_string()
-                                    );
+                                    panic!("Variable {} is not an array, cannot modify!", id);
                                 }
                             } else {
                                 panic!("Variable (array) not found: {}", array_id);
