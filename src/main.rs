@@ -1,6 +1,7 @@
 #![feature(test)]
 
 use clap::Parser;
+use rust_decimal_macros::dec;
 use std::collections::HashMap;
 use std::process::exit;
 use std::{fs, process};
@@ -48,6 +49,7 @@ fn main() {
             "print".to_owned(),
             "printstr".to_owned(),
         ]),
+        returnval: program::Data::Number(dec!(0)),
     };
     program.run_loop(&mut Vec::new());
 }

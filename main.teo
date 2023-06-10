@@ -15,8 +15,10 @@ if (x[1] == 3) {
 lbozo = x[1] > 3;
 print(lbozo);
 def a(n: Bool){
-    print(n);
+    return(n);
 };
-a(true);
+print("Should get called after here");
+l = a(true);
+print(l);
 print(3 + 4 * 2 - 6 / 3 * 2);
 return(0);

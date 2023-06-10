@@ -1,6 +1,6 @@
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
-use std::{collections::HashMap, process::exit};
+use std::collections::HashMap;
 pub mod parser;
 pub struct Program {
     pub commands: Vec<parser::Ast>,
@@ -9,6 +9,7 @@ pub struct Program {
     pub variable: HashMap<String, Data>,
     pub function: HashMap<String, parser::Ast>,
     pub std_commands: Vec<String>,
+    pub returnval: Data,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -48,10 +49,10 @@ impl Program {
         for command in &self.commands {
             match command {
                 parser::Ast::Set { id, expr } => {
-                    let value = expr.evaluate(&self.variable);
+                    let value = expr.evaluate(&self, writer);
                     match id.as_ref() {
                         parser::Ast::ArrayCall { id: array_id, k } => {
-                            let index = k.evaluate(&self.variable).as_number().to_usize().unwrap();
+                            let index = k.evaluate(&self, writer).as_number().to_usize().unwrap();
 
                             let array = self.variable.get_mut(array_id);
                             if let Some(array) = array {
@@ -70,7 +71,7 @@ impl Program {
                     };
                 }
                 parser::Ast::If { condition, block } => {
-                    let conditionresult = condition.evaluate(&self.variable);
+                    let conditionresult = condition.evaluate(&self, writer);
                     match conditionresult {
                         Data::Bool(e) => {
                             if e {
@@ -81,6 +82,7 @@ impl Program {
                                     variable: self.variable.clone(),
                                     function: self.function.clone(),
                                     std_commands: self.std_commands.clone(),
+                                    returnval: Data::Number(dec!(0)),
                                 };
                                 program.run_loop(writer);
                                 if program.panic {
@@ -112,7 +114,7 @@ impl Program {
                             #[cfg(feature = "print")]
                             "print" => {
                                 for arg in args {
-                                    let value = arg.evaluate(&self.variable);
+                                    let value = arg.evaluate(&self, writer);
                                     println!("{}", value.as_string());
                                     write!(&mut writer, "{}", value.as_string()).unwrap();
                                 }
@@ -120,8 +122,8 @@ impl Program {
                             #[cfg(feature = "return")]
                             "return" => {
                                 if let Some(arg) = args.first() {
-                                    let value = arg.evaluate(&self.variable);
-                                    exit(value.as_number().to_i32().unwrap());
+                                    let value = arg.evaluate(&self, writer);
+                                    self.returnval = value
                                 } else {
                                     panic!("Need exit code for the return function!");
                                 }
@@ -140,7 +142,7 @@ impl Program {
                                 let mut local_variables = HashMap::new();
                                 for (i, arg) in args.iter().enumerate() {
                                     let (name, dtype) = &params[i];
-                                    let value = arg.evaluate(&self.variable);
+                                    let value = arg.evaluate(&self, writer);
                                     match dtype.as_str() {
                                         "Integer" => {
                                             if let Data::Number(_) = value {
@@ -177,6 +179,7 @@ impl Program {
                                     variable: local_variables,
                                     function: self.function.clone(),
                                     std_commands: self.std_commands.clone(),
+                                    returnval: Data::Number(dec!(0)),
                                 };
                                 program.run_loop(writer);
                                 if program.panic {
@@ -196,11 +199,12 @@ impl Program {
 }
 
 trait Evaluate {
-    fn evaluate(&self, variables: &HashMap<String, Data>) -> Data;
+    fn evaluate(&self, program: &Program, writer: &mut impl std::io::Write) -> Data;
 }
 
 impl Evaluate for parser::Ast {
-    fn evaluate(&self, variables: &HashMap<String, Data>) -> Data {
+    fn evaluate(&self, program: &Program, mut writer: &mut impl std::io::Write) -> Data {
+        let variables = &program.variable;
         match self {
             parser::Ast::Int(i) => Data::Number(*i),
             parser::Ast::Bool(b) => Data::Bool(*b),
@@ -211,8 +215,8 @@ impl Evaluate for parser::Ast {
                 }
             },
             parser::Ast::BinaryOp { op, left, right } => {
-                let left_value = left.evaluate(variables);
-                let right_value = right.evaluate(variables);
+                let left_value = left.evaluate(program, writer);
+                let right_value = right.evaluate(program, writer);
                 let f1 = left_value.as_number();
                 let f2 = right_value.as_number();
                 match op.as_str() {
@@ -233,7 +237,7 @@ impl Evaluate for parser::Ast {
             parser::Ast::Array(elements) => {
                 let mut array_data = Vec::new();
                 for element in elements {
-                    let element_data = element.evaluate(variables);
+                    let element_data = element.evaluate(program, writer);
                     array_data.push(element_data);
                 }
                 Data::Array(array_data)
@@ -241,7 +245,7 @@ impl Evaluate for parser::Ast {
             parser::Ast::ArrayCall { id, k } => {
                 if let Some(array) = variables.get(id) {
                     if let Data::Array(elements) = array {
-                        let index = k.evaluate(variables).as_number().to_usize().unwrap();
+                        let index = k.evaluate(program, writer).as_number().to_usize().unwrap();
                         if index >= elements.len() {
                             panic!("Error: array index out of bounds");
                         }
@@ -251,6 +255,94 @@ impl Evaluate for parser::Ast {
                     }
                 } else {
                     panic!("Error: array variable not found: {}", id);
+                }
+            }
+
+            parser::Ast::FunctionCall { id, args } => {
+                let std_functions = program.std_commands.clone();
+                if std_functions.contains(id) {
+                    match id.as_str() {
+                        #[cfg(feature = "print")]
+                        "print" => {
+                            for arg in args {
+                                let value = arg.evaluate(program, writer);
+                                println!("{}", value.as_string());
+                                write!(&mut writer, "{}", value.as_string()).unwrap();
+                            }
+                            Data::Number(dec!(0))
+                        }
+                        #[cfg(feature = "return")]
+                        "return" => {
+                            if let Some(arg) = args.first() {
+                                let value = arg.evaluate(program, writer);
+                                value
+                            } else {
+                                panic!("Need exit code for the return function!");
+                            }
+                        }
+                        _ => panic!("Function isn't enabled"),
+                    }
+                } else if let Some(func) = program.function.get(id) {
+                    match func {
+                        parser::Ast::FunctionDefinition { params, body, .. } => {
+                            if params.len() < args.len() {
+                                panic!("Too many argument!",);
+                            }
+                            if params.len() > args.len() {
+                                panic!("Not enough argument!",);
+                            }
+                            let mut local_variables = HashMap::new();
+                            for (i, arg) in args.iter().enumerate() {
+                                let (name, dtype) = &params[i];
+                                let value = arg.evaluate(program, writer);
+                                match dtype.as_str() {
+                                        "Integer" => {
+                                            if let Data::Number(_) = value {
+                                            } else {
+                                                panic!("Wrong type for function: expected {}!", dtype);
+                                            }
+                                        }
+                                        "String" => {
+                                            if let Data::String(_) = value {
+                                            } else {
+                                                panic!("Wrong type for function: expected {}!", dtype);
+                                            }
+                                        }
+                                        "Array" => {
+                                            if let Data::Array(_) = value {
+                                            } else {
+                                                panic!("Wrong type for function: expected {}!", dtype);
+                                            }
+                                        }
+                                        "Bool" => {
+                                            if let Data::Bool(_) = value {
+                                            } else {
+                                                panic!("Wrong type for function: expected {}!", dtype);
+                                            }
+                                        }
+                                        _ => panic!("Type does not exist: {}! Only types exist are Integer, String, Bool and Array", dtype),
+                                    }
+                                local_variables.insert(name.clone(), value);
+                            }
+                            let mut program = Program {
+                                commands: body.clone(),
+                                current_line: 0,
+                                panic: false,
+                                variable: local_variables,
+                                function: program.function.clone(),
+                                std_commands: program.std_commands.clone(),
+                                returnval: Data::Number(dec!(0)),
+                            };
+                            program.run_loop(writer);
+                            if program.panic {
+                                panic!("Function `{}` panicked!", id);
+                            }
+                            program.returnval
+                        }
+                        _ => panic!("`{}` is not a function!", id),
+                    }
+                } else {
+                    panic!("Function `{}` is not defined!", id);
                 }
             }
             _ => panic!("Invalid AST node"),
@@ -268,16 +360,36 @@ mod tests {
     #[test]
     fn test_evaluate_int() {
         let ast = parser::Ast::Int(Decimal::from(42));
-        let variables = HashMap::new();
-        let result = ast.evaluate(&variables);
+        let result = ast.evaluate(
+            &Program {
+                commands: vec![],
+                current_line: 0,
+                panic: false,
+                variable: HashMap::new(),
+                function: HashMap::new(),
+                std_commands: vec![],
+                returnval: Data::Number(dec!(0)),
+            },
+            &mut Vec::new(),
+        );
         assert_eq!(result, Data::Number(Decimal::from(42)));
     }
 
     #[test]
     fn test_evaluate_float() {
         let ast = parser::Ast::Int(Decimal::from_f64(35.8 as f64).unwrap());
-        let variables = HashMap::new();
-        let result = ast.evaluate(&variables);
+        let result = ast.evaluate(
+            &Program {
+                commands: vec![],
+                current_line: 0,
+                panic: false,
+                variable: HashMap::new(),
+                function: HashMap::new(),
+                std_commands: vec![],
+                returnval: Data::Number(dec!(0)),
+            },
+            &mut Vec::new(),
+        );
         assert_eq!(
             result,
             Data::Number(Decimal::from_f64(35.8 as f64).unwrap())
@@ -289,7 +401,18 @@ mod tests {
         let ast = parser::Ast::Identifier("x".to_string());
         let mut variables = HashMap::new();
         variables.insert("x".to_string(), Data::Number(Decimal::from(42)));
-        let result = ast.evaluate(&variables);
+        let result = ast.evaluate(
+            &Program {
+                commands: vec![],
+                current_line: 0,
+                panic: false,
+                variable: variables,
+                function: HashMap::new(),
+                std_commands: vec![],
+                returnval: Data::Number(dec!(0)),
+            },
+            &mut Vec::new(),
+        );
         assert_eq!(result, Data::Number(Decimal::from(42)));
     }
 
@@ -302,16 +425,36 @@ mod tests {
             left: Box::new(left),
             right: Box::new(right),
         };
-        let variables = HashMap::new();
-        let result = ast.evaluate(&variables);
+        let result = ast.evaluate(
+            &Program {
+                commands: vec![],
+                current_line: 0,
+                panic: false,
+                variable: HashMap::new(),
+                function: HashMap::new(),
+                std_commands: vec![],
+                returnval: Data::Number(dec!(0)),
+            },
+            &mut Vec::new(),
+        );
         assert_eq!(result, Data::Number(Decimal::from(5)));
     }
 
     #[test]
     fn test_evaluate_string() {
         let ast = parser::Ast::String("hello".to_string());
-        let variables = HashMap::new();
-        let result = ast.evaluate(&variables);
+        let result = ast.evaluate(
+            &Program {
+                commands: vec![],
+                current_line: 0,
+                panic: false,
+                variable: HashMap::new(),
+                function: HashMap::new(),
+                std_commands: vec![],
+                returnval: Data::Number(dec!(0)),
+            },
+            &mut Vec::new(),
+        );
         assert_eq!(result, Data::String("hello".to_string()));
     }
 
@@ -323,8 +466,18 @@ mod tests {
             parser::Ast::Int(dec!(3.0)),
         ];
         let ast = parser::Ast::Array(elements);
-        let variables = HashMap::new();
-        let result = ast.evaluate(&variables);
+        let result = ast.evaluate(
+            &Program {
+                commands: vec![],
+                current_line: 0,
+                panic: false,
+                variable: HashMap::new(),
+                function: HashMap::new(),
+                std_commands: vec![],
+                returnval: Data::Number(dec!(0)),
+            },
+            &mut Vec::new(),
+        );
         assert_eq!(
             result,
             Data::Array(vec![
@@ -368,8 +521,20 @@ mod tests {
         let mut rng = thread_rng();
         let value = rng.gen_range(10000..50000);
         let ast = parser::Ast::Int(Decimal::from(value));
-        let variables = HashMap::new();
-        b.iter(|| test::black_box(ast.evaluate(&variables)));
+        b.iter(|| {
+            test::black_box(ast.evaluate(
+                &Program {
+                    commands: vec![],
+                    current_line: 0,
+                    panic: false,
+                    variable: HashMap::new(),
+                    function: HashMap::new(),
+                    std_commands: vec![],
+                    returnval: Data::Number(dec!(0)),
+                },
+                &mut Vec::new(),
+            ))
+        });
     }
 
     #[bench]
@@ -401,10 +566,20 @@ mod tests {
                 right: Box::new(right),
             },
         ];
-        let variables = HashMap::new();
         b.iter(|| {
             for ast in &asts {
-                test::black_box(ast.evaluate(&variables));
+                test::black_box(ast.evaluate(
+                    &Program {
+                        commands: vec![],
+                        current_line: 0,
+                        panic: false,
+                        variable: HashMap::new(),
+                        function: HashMap::new(),
+                        std_commands: vec![],
+                        returnval: Data::Number(dec!(0)),
+                    },
+                    &mut Vec::new(),
+                ));
             }
         });
     }
@@ -420,6 +595,7 @@ mod tests {
             variable: HashMap::new(),
             function: HashMap::new(),
             std_commands: vec!["print".to_owned()],
+            returnval: Data::Number(dec!(0)),
         };
         b.iter(|| {
             program.run_loop(&mut Vec::new());
