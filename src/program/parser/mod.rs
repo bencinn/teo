@@ -36,6 +36,7 @@ pub enum Ast {
         block: Vec<Ast>,
     },
 }
+
 impl fmt::Display for Ast {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -98,80 +99,138 @@ impl fmt::Display for Ast {
 
 peg::parser! {
     grammar ast_parser() for str {
-        rule _() = [' '| '\t'| '\n']*
+        rule _() =[' ' | '\t' | '\n'] *
         // rule integer() -> Ast = n:$(['0'..='9']+) { Ast::Int(n.parse().unwrap()) }
-        rule integer() -> Ast = n:$(['0'..='9']+ ("." ['0'..='9']+)?) { Ast::Int(Decimal::from_str_exact(n).unwrap()) }
-        rule string() -> Ast = "\"" s:$([^'"']*) "\"" { Ast::String(s.to_string()) }
-        rule identifier() -> Ast = s:$(['a'..='z' | 'A'..='Z' | '_']['a'..='z' | 'A'..='Z' | '_' | '0'..='9']*) { Ast::Identifier(s.to_string()) }
-        rule array() -> Ast
-            = "[" _ values:(expression() ** ("," _)) _ "]"
-            { Ast::Array(values) }
-        rule array_call() -> Ast
-            = id:identifier() _ "[" _ k:expression() _ "]"
-            { Ast::ArrayCall { id: id.to_string(), k: Box::new(k) } }
-
-        rule atom() -> Ast =
-            "true" { Ast::Bool(true) } /
-            "false" { Ast::Bool(false) } /
-            integer() /
-            string() /
-            identifier()
-
-        rule assignment_to_elem() -> Ast = id:array_call() _ "=" _ expr:expression() { Ast::Set{ id: Box::new(id), expr: Box::new(expr) } }
-        rule assignment() -> Ast = id:identifier() _ "=" _ expr:expression() { Ast::Set{ id: Box::new(Ast::Identifier(id.to_string())), expr: Box::new(expr) } }
-        rule function_param() -> (String, String) = id:identifier() _ ":" _ idtype:identifier() {(id.to_string(), idtype.to_string())}
-        rule function() -> Ast
-            = "def" _ id:identifier() _ "(" _ params:(function_param() ** ("," _)) _ ")" _ "{" _ body:(expression() ** (_ ";" _)) _ ";" _ "}"
-            {Ast::FunctionDefinition { id: id.to_string(), params, body}}
-        rule function_call() -> Ast
-            = id:identifier() _ "(" _ args:(expression() ** ("," _)) _ ")"
-            {Ast::FunctionCall {id: id.to_string(), args,}
+        rule integer() -> Ast = n: $(['0' ..= '9'] +("."['0' ..= '9'] +) ?) {
+            Ast::Int(Decimal::from_str_exact(n).unwrap())
         }
-
-        rule comparison_op() -> String
-            = "<=" { "<=".to_string() }
-            / ">=" { ">=".to_string() }
-            / "==" { "==".to_string() }
-            / "!=" { "!=".to_string() }
-            / "<" { "<".to_string() }
-            / ">" { ">".to_string() }
-
-        rule comparison() -> Ast
-            = left:term() _ op:comparison_op() _ right:term()
-                { Ast::BinaryOp{ op, left: Box::new(left), right: Box::new(right) } } /
-                term()
-
-        rule ifs() -> Ast
-            = "if" _ "(" _ comparison:comparison() _ ")" _ "{" _ body:(expression() ** (_ ";" _)) _ ";" _ "}"
-            {Ast::If {condition: Box::new(comparison), block: body}}
-
-        rule factor() -> Ast
-            = ifs() /
-            assignment_to_elem() /
-            assignment() /
-            function() /
-            function_call() /
-            array() /
-            array_call() /
-            atom() /
-            "(" _ expr:expression() _ ")" { expr }
-
-rule term() -> Ast
-    = left:factor() _ op:$(['*' | '/']) _ right:term()
-        { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
-      left:factor() _ op:$(['+' | '-']) _ right:term()
-        { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
-      factor()
-rule expression() -> Ast
-    = left:comparison() _ op:$(['*' | '/']) _ right:expression()
-        { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
-      left:comparison() _ op:$(['+' | '-']) _ right:expression()
-        { Ast::BinaryOp{ op: op.to_string(), left: Box::new(left), right: Box::new(right) } } /
-      comparison()
-
-        pub rule program() -> Vec<Ast> = _ exprs:(expression() ** (";" _)) _ ";"? _ { exprs }
+        rule string() -> Ast = "\"" s: $([^ '"'] *) "\"" {
+            Ast::String(s.to_string())
         }
+        rule identifier(
+        ) -> Ast = s: $(['a' ..= 'z' | 'A' ..= 'Z' | '_']['a' ..= 'z' | 'A' ..= 'Z' | '_' | '0' ..= '9'] *) {
+            Ast::Identifier(s.to_string())
+        }
+        rule array() -> Ast = "[" _ values:(expression() **("," _)) _ "]" {
+            Ast::Array(values)
+        }
+        rule array_call() -> Ast = id: identifier() _ "[" _ k: expression() _ "]" {
+            Ast::ArrayCall {
+                id: id.to_string(),
+                k: Box::new(k),
+            }
+        }
+        rule atom() -> Ast = "true" {
+            Ast::Bool(true)
+        }
+        / "false" {
+            Ast::Bool(false)
+        }
+        / integer(
+        ) / string() / identifier() rule assignment_to_elem() -> Ast = id: array_call() _ "=" _ expr: expression() {
+            Ast::Set {
+                id: Box::new(id),
+                expr: Box::new(expr),
+            }
+        }
+        rule assignment() -> Ast = id: identifier() _ "=" _ expr: expression() {
+            Ast::Set {
+                id: Box::new(Ast::Identifier(id.to_string())),
+                expr: Box::new(expr),
+            }
+        }
+        rule function_param() ->(String, String) = id: identifier() _ ":" _ idtype: identifier() {
+            (id.to_string(), idtype.to_string())
+        }
+        rule function(
+        ) -> Ast = "def" _ id: identifier(
+        ) _ "(" _ params:(function_param() **("," _)) _ ")" _ "{" _ body:(expression() **(_ ";" _)) _ ";" _ "}" {
+            Ast::FunctionDefinition {
+                id: id.to_string(),
+                params,
+                body,
+            }
+        }
+        rule function_call() -> Ast = id: identifier() _ "(" _ args:(expression() **("," _)) _ ")" {
+            Ast::FunctionCall {
+                id: id.to_string(),
+                args,
+            }
+        }
+        rule comparison_op() -> String = "<=" {
+            "<=".to_string()
+        }
+        / ">=" {
+            ">=".to_string()
+        }
+        / "==" {
+            "==".to_string()
+        }
+        / "!=" {
+            "!=".to_string()
+        }
+        / "<" {
+            "<".to_string()
+        }
+        / ">" {
+            ">".to_string()
+        }
+        rule comparison() -> Ast = left: term() _ op: comparison_op() _ right: term() {
+            Ast::BinaryOp {
+                op,
+                left: Box::new(left),
+                right: Box::new(right),
+            }
+        }
+        / term(
+        ) rule ifs(
+        ) -> Ast = "if" _ "(" _ comparison: comparison() _ ")" _ "{" _ body:(expression() **(_ ";" _)) _ ";" _ "}" {
+            Ast::If {
+                condition: Box::new(comparison),
+                block: body,
+            }
+        }
+        rule factor(
+        ) -> Ast = ifs(
+        ) / assignment_to_elem(
+        ) / assignment(
+        ) / function() / function_call() / array() / array_call() / atom() / "(" _ expr: expression() _ ")" {
+            expr
+        }
+        rule term() -> Ast = left: factor() _ op: $(['*' | '/']) _ right: term() {
+            Ast::BinaryOp {
+                op: op.to_string(),
+                left: Box::new(left),
+                right: Box::new(right),
+            }
+        }
+        / left: factor() _ op: $(['+' | '-']) _ right: term() {
+            Ast::BinaryOp {
+                op: op.to_string(),
+                left: Box::new(left),
+                right: Box::new(right),
+            }
+        }
+        / factor() rule expression() -> Ast = left: comparison() _ op: $(['*' | '/']) _ right: expression() {
+            Ast::BinaryOp {
+                op: op.to_string(),
+                left: Box::new(left),
+                right: Box::new(right),
+            }
+        }
+        / left: comparison() _ op: $(['+' | '-']) _ right: expression() {
+            Ast::BinaryOp {
+                op: op.to_string(),
+                left: Box::new(left),
+                right: Box::new(right),
+            }
+        }
+        / comparison() pub rule program() -> Vec < Ast >= _ exprs:(expression() **(";" _)) _ ";" ? _ {
+            exprs
+        }
+    }
 }
+
 impl Ast {
     pub fn parse_code(block: &str) -> Result<Vec<Ast>, peg::error::ParseError<peg::str::LineCol>> {
         match ast_parser::program(block) {
