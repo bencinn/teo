@@ -279,17 +279,14 @@ impl Evaluate for parser::Ast {
             parser::Ast::FunctionCall { id, args } => {
                 let std_functions = program.std_commands.clone();
                 if std_functions.contains(id) {
-                    match id.as_str() {
-                        #[cfg(feature = "print")]
+                    matchcmd!(id, {
                         "print" => {
-                            for arg in args {
-                                let value = arg.evaluate(program, writer);
+                            fep!(program, args, value, writer {
                                 println!("{}", value.as_string());
                                 write!(&mut writer, "{}", value.as_string()).unwrap();
-                            }
+                            });
                             Data::Number(dec!(0))
-                        }
-                        #[cfg(feature = "return")]
+                        },
                         "return" => {
                             if let Some(arg) = args.first() {
                                 let value = arg.evaluate(program, writer);
@@ -298,8 +295,8 @@ impl Evaluate for parser::Ast {
                                 panic!("Need exit code for the return function!");
                             }
                         }
-                        _ => panic!("Function isn't enabled"),
                     }
+                    )
                 } else if let Some(func) = program.function.get(id) {
                     match func {
                         parser::Ast::FunctionDefinition { params, body, .. } => {
