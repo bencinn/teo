@@ -44,6 +44,27 @@ impl Data {
     }
 }
 
+macro_rules! matchcmd {
+    ($id:expr, {$($function:expr => $body:block),+}) => {
+        match $id.as_str() {
+            $(
+                #[cfg(feature = $function)]
+                $function => $body,
+            )+
+            _ => panic!("Function isn't enabled"),
+        }
+    };
+}
+
+macro_rules! fep {
+    ($program:ident, $args:expr, $parseto:ident, $writer:ident $body:block) => {
+        for arg in $args {
+            let $parseto = arg.evaluate(&$program, $writer);
+            $body
+        }
+    };
+}
+
 impl Program {
     pub fn run_loop(&mut self, mut writer: &mut impl std::io::Write) {
         for command in &self.commands {
@@ -110,16 +131,13 @@ impl Program {
                 parser::Ast::FunctionCall { id, args } => {
                     let std_functions = self.std_commands.clone();
                     if std_functions.contains(id) {
-                        match id.as_str() {
-                            #[cfg(feature = "print")]
+                        matchcmd!(id, {
                             "print" => {
-                                for arg in args {
-                                    let value = arg.evaluate(&self, writer);
+                                fep!(self, args, value, writer {
                                     println!("{}", value.as_string());
                                     write!(&mut writer, "{}", value.as_string()).unwrap();
-                                }
-                            }
-                            #[cfg(feature = "return")]
+                                })
+                            },
                             "return" => {
                                 if let Some(arg) = args.first() {
                                     let value = arg.evaluate(&self, writer);
@@ -128,16 +146,16 @@ impl Program {
                                     panic!("Need exit code for the return function!");
                                 }
                             }
-                            _ => panic!("Function isn't enabled"),
                         }
+                        );
                     } else if let Some(func) = self.function.get(id) {
                         match func {
                             parser::Ast::FunctionDefinition { params, body, .. } => {
                                 if params.len() < args.len() {
-                                    panic!("Too many argument!",);
+                                    panic!("Too many argument!");
                                 }
                                 if params.len() > args.len() {
-                                    panic!("Not enough argument!",);
+                                    panic!("Not enough argument!");
                                 }
                                 let mut local_variables = HashMap::new();
                                 for (i, arg) in args.iter().enumerate() {
