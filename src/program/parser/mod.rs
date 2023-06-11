@@ -175,10 +175,7 @@ rule expression() -> Ast
 impl Ast {
     pub fn parse_code(block: &str) -> Result<Vec<Ast>, peg::error::ParseError<peg::str::LineCol>> {
         match ast_parser::program(block) {
-            Ok(ast) => {
-                println!("{:#?}", ast);
-                Ok(ast)
-            }
+            Ok(ast) => Ok(ast),
             Err(e) => {
                 println!("Unable to parse!");
                 println!("{}", e);

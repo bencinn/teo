@@ -16,7 +16,7 @@ struct Args {
     /// Read from <FILE_NAME>
     #[arg(short, long)]
     file_name: String,
-    // Only parse the code and exit
+    /// Only parse the code and exit
     #[arg(long, default_value_t = false)]
     only_parse: bool,
 }
@@ -36,6 +36,7 @@ fn main() {
         }
     };
     if args.only_parse {
+        println!("{:#?}", vec_ast);
         exit(0);
     };
     let mut program: Program = Program {
