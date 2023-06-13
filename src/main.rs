@@ -1,12 +1,13 @@
 #![feature(test)]
 
 use clap::Parser;
+use program::Program;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 use std::process::exit;
 use std::{fs, process};
-
-use program::Program;
+mod util;
+use util::shell;
 
 mod program;
 
@@ -25,6 +26,7 @@ struct Args {
 }
 
 fn main() {
+    let mut shell = shell::Shell::new();
     let args = Args::parse();
     let vec_ast = match program::parser::Ast::parse_code(
         fs::read_to_string(args.file_name)
@@ -34,7 +36,7 @@ fn main() {
     ) {
         Ok(ast) => ast,
         Err(_e) => {
-            eprintln!("Failed to read file");
+            shell.error("Failed to read file").unwrap();
             process::exit(1);
         }
     };
@@ -48,6 +50,10 @@ fn main() {
             features_list.push(feature.to_string());
         }
     }
+    let mut featureliststr = "".to_string();
+    for feature in &features_list {
+        featureliststr = featureliststr + "`" + &feature + "`" + " ";
+    }
     let mut program: Program = Program {
         commands: vec_ast,
         current_line: 0,
@@ -57,6 +63,9 @@ fn main() {
         std_commands: features_list,
         returnval: program::Data::Number(dec!(0)),
     };
+    shell
+        .status("Running", "with feature ".to_string() + &featureliststr)
+        .unwrap();
     program.run_loop(&mut Vec::new());
     match program.returnval {
         program::Data::Number(e) => exit(e.round().to_string().parse().unwrap()),
