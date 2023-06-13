@@ -19,7 +19,7 @@ struct Args {
     /// Only parse the code and exit
     #[arg(long, default_value_t = false)]
     only_parse: bool,
-    /// Features to enable
+    /// Enable features from <FEATURES> (Features still need to be enable in build step)
     #[arg(long, value_delimiter = ',', use_value_delimiter = true)]
     features: Vec<String>,
 }
@@ -42,11 +42,7 @@ fn main() {
         println!("{:#?}", vec_ast);
         exit(0);
     };
-    let mut features_list = vec![
-        "return".to_owned(),
-        "print".to_owned(),
-        "printstr".to_owned(),
-    ];
+    let mut features_list = vec!["return".to_owned(), "print".to_owned()];
     for feature in &args.features {
         if !features_list.contains(&feature) {
             features_list.push(feature.to_string());
@@ -62,4 +58,8 @@ fn main() {
         returnval: program::Data::Number(dec!(0)),
     };
     program.run_loop(&mut Vec::new());
+    match program.returnval {
+        program::Data::Number(e) => exit(e.round().to_string().parse().unwrap()),
+        _ => unimplemented!(),
+    }
 }
