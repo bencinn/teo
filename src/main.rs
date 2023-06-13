@@ -19,6 +19,9 @@ struct Args {
     /// Only parse the code and exit
     #[arg(long, default_value_t = false)]
     only_parse: bool,
+    /// Features to enable
+    #[arg(long, value_delimiter = ',', use_value_delimiter = true)]
+    features: Vec<String>,
 }
 
 fn main() {
@@ -39,17 +42,23 @@ fn main() {
         println!("{:#?}", vec_ast);
         exit(0);
     };
+    let mut features_list = vec![
+        "return".to_owned(),
+        "print".to_owned(),
+        "printstr".to_owned(),
+    ];
+    for feature in &args.features {
+        if !features_list.contains(&feature) {
+            features_list.push(feature.to_string());
+        }
+    }
     let mut program: Program = Program {
         commands: vec_ast,
         current_line: 0,
         panic: false,
         variable: HashMap::new(),
         function: HashMap::new(),
-        std_commands: Vec::from([
-            "return".to_owned(),
-            "print".to_owned(),
-            "printstr".to_owned(),
-        ]),
+        std_commands: features_list,
         returnval: program::Data::Number(dec!(0)),
     };
     program.run_loop(&mut Vec::new());
