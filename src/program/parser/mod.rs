@@ -2,6 +2,8 @@ use peg;
 use rust_decimal::Decimal;
 use std::fmt;
 
+use anyhow::{anyhow, Result};
+
 #[derive(Debug, Clone)]
 pub enum Ast {
     String(String),
@@ -232,14 +234,10 @@ peg::parser! {
 }
 
 impl Ast {
-    pub fn parse_code(block: &str) -> Result<Vec<Ast>, peg::error::ParseError<peg::str::LineCol>> {
+    pub fn parse_code(block: &str) -> Result<Vec<Ast>> {
         match ast_parser::program(block) {
             Ok(ast) => Ok(ast),
-            Err(e) => {
-                println!("Unable to parse!");
-                println!("{}", e);
-                Err(e)
-            }
+            Err(e) => Err(anyhow!(e)),
         }
     }
 }

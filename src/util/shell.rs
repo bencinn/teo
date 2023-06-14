@@ -6,7 +6,7 @@ use std::io::IsTerminal;
 use termcolor::Color::{Cyan, Green, Red, Yellow};
 use termcolor::{self, Color, ColorSpec, StandardStream, WriteColor};
 
-pub type CargoResult<T> = anyhow::Result<T>;
+use anyhow::Result;
 
 pub enum TtyWidth {
     NoTty,
@@ -133,7 +133,7 @@ impl Shell {
         message: Option<&dyn fmt::Display>,
         color: Color,
         justified: bool,
-    ) -> CargoResult<()> {
+    ) -> Result<()> {
         match self.verbosity {
             Verbosity::Quiet => Ok(()),
             _ => {
@@ -199,7 +199,7 @@ impl Shell {
     }
 
     /// Shortcut to right-align and color green a status message.
-    pub fn status<T, U>(&mut self, status: T, message: U) -> CargoResult<()>
+    pub fn status<T, U>(&mut self, status: T, message: U) -> Result<()>
     where
         T: fmt::Display,
         U: fmt::Display,
@@ -207,7 +207,7 @@ impl Shell {
         self.print(&status, Some(&message), Green, true)
     }
 
-    pub fn status_header<T>(&mut self, status: T) -> CargoResult<()>
+    pub fn status_header<T>(&mut self, status: T) -> Result<()>
     where
         T: fmt::Display,
     {
@@ -215,12 +215,7 @@ impl Shell {
     }
 
     /// Shortcut to right-align a status message.
-    pub fn status_with_color<T, U>(
-        &mut self,
-        status: T,
-        message: U,
-        color: Color,
-    ) -> CargoResult<()>
+    pub fn status_with_color<T, U>(&mut self, status: T, message: U, color: Color) -> Result<()>
     where
         T: fmt::Display,
         U: fmt::Display,
@@ -229,9 +224,9 @@ impl Shell {
     }
 
     /// Runs the callback only if we are in verbose mode.
-    pub fn verbose<F>(&mut self, mut callback: F) -> CargoResult<()>
+    pub fn verbose<F>(&mut self, mut callback: F) -> Result<()>
     where
-        F: FnMut(&mut Shell) -> CargoResult<()>,
+        F: FnMut(&mut Shell) -> Result<()>,
     {
         match self.verbosity {
             Verbosity::Verbose => callback(self),
@@ -240,9 +235,9 @@ impl Shell {
     }
 
     /// Runs the callback if we are not in verbose mode.
-    pub fn concise<F>(&mut self, mut callback: F) -> CargoResult<()>
+    pub fn concise<F>(&mut self, mut callback: F) -> Result<()>
     where
-        F: FnMut(&mut Shell) -> CargoResult<()>,
+        F: FnMut(&mut Shell) -> Result<()>,
     {
         match self.verbosity {
             Verbosity::Verbose => Ok(()),
@@ -251,7 +246,7 @@ impl Shell {
     }
 
     /// Prints a red 'error' message.
-    pub fn error<T: fmt::Display>(&mut self, message: T) -> CargoResult<()> {
+    pub fn error<T: fmt::Display>(&mut self, message: T) -> Result<()> {
         if self.needs_clear {
             self.err_erase_line();
         }
@@ -260,7 +255,7 @@ impl Shell {
     }
 
     /// Prints an amber 'warning' message.
-    pub fn warn<T: fmt::Display>(&mut self, message: T) -> CargoResult<()> {
+    pub fn warn<T: fmt::Display>(&mut self, message: T) -> Result<()> {
         match self.verbosity {
             Verbosity::Quiet => Ok(()),
             _ => self.print(&"warning", Some(&message), Yellow, false),
@@ -268,7 +263,7 @@ impl Shell {
     }
 
     /// Prints a cyan 'note' message.
-    pub fn note<T: fmt::Display>(&mut self, message: T) -> CargoResult<()> {
+    pub fn note<T: fmt::Display>(&mut self, message: T) -> Result<()> {
         self.print(&"note", Some(&message), Cyan, false)
     }
 
@@ -283,7 +278,7 @@ impl Shell {
     }
 
     /// Updates the color choice (always, never, or auto) from a string..
-    pub fn set_color_choice(&mut self, color: Option<&str>) -> CargoResult<()> {
+    pub fn set_color_choice(&mut self, color: Option<&str>) -> Result<()> {
         if let ShellOut::Stream {
             ref mut stdout,
             ref mut stderr,
@@ -339,27 +334,19 @@ impl Shell {
     /// Write a styled fragment
     ///
     /// Caller is responsible for deciding whether [`Shell::verbosity`] is affects output.
-    pub fn write_stdout(
-        &mut self,
-        fragment: impl fmt::Display,
-        color: &ColorSpec,
-    ) -> CargoResult<()> {
+    pub fn write_stdout(&mut self, fragment: impl fmt::Display, color: &ColorSpec) -> Result<()> {
         self.output.write_stdout(fragment, color)
     }
 
     /// Write a styled fragment
     ///
     /// Caller is responsible for deciding whether [`Shell::verbosity`] is affects output.
-    pub fn write_stderr(
-        &mut self,
-        fragment: impl fmt::Display,
-        color: &ColorSpec,
-    ) -> CargoResult<()> {
+    pub fn write_stderr(&mut self, fragment: impl fmt::Display, color: &ColorSpec) -> Result<()> {
         self.output.write_stderr(fragment, color)
     }
 
     /// Prints a message to stderr and translates ANSI escape code into console colors.
-    pub fn print_ansi_stderr(&mut self, message: &[u8]) -> CargoResult<()> {
+    pub fn print_ansi_stderr(&mut self, message: &[u8]) -> Result<()> {
         if self.needs_clear {
             self.err_erase_line();
         }
@@ -375,7 +362,7 @@ impl Shell {
     }
 
     /// Prints a message to stdout and translates ANSI escape code into console colors.
-    pub fn print_ansi_stdout(&mut self, message: &[u8]) -> CargoResult<()> {
+    pub fn print_ansi_stdout(&mut self, message: &[u8]) -> Result<()> {
         if self.needs_clear {
             self.err_erase_line();
         }
@@ -390,7 +377,7 @@ impl Shell {
         Ok(())
     }
 
-    pub fn print_json<T: serde::ser::Serialize>(&mut self, obj: &T) -> CargoResult<()> {
+    pub fn print_json<T: serde::ser::Serialize>(&mut self, obj: &T) -> Result<()> {
         // Path may fail to serialize to JSON ...
         let encoded = serde_json::to_string(&obj)?;
         // ... but don't fail due to a closed pipe.
@@ -415,7 +402,7 @@ impl ShellOut {
         message: Option<&dyn fmt::Display>,
         color: Color,
         justified: bool,
-    ) -> CargoResult<()> {
+    ) -> Result<()> {
         match *self {
             ShellOut::Stream { ref mut stderr, .. } => {
                 stderr.reset()?;
@@ -449,7 +436,7 @@ impl ShellOut {
     }
 
     /// Write a styled fragment
-    fn write_stdout(&mut self, fragment: impl fmt::Display, color: &ColorSpec) -> CargoResult<()> {
+    fn write_stdout(&mut self, fragment: impl fmt::Display, color: &ColorSpec) -> Result<()> {
         match *self {
             ShellOut::Stream { ref mut stdout, .. } => {
                 stdout.reset()?;
@@ -465,7 +452,7 @@ impl ShellOut {
     }
 
     /// Write a styled fragment
-    fn write_stderr(&mut self, fragment: impl fmt::Display, color: &ColorSpec) -> CargoResult<()> {
+    fn write_stderr(&mut self, fragment: impl fmt::Display, color: &ColorSpec) -> Result<()> {
         match *self {
             ShellOut::Stream { ref mut stderr, .. } => {
                 stderr.reset()?;

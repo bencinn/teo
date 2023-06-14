@@ -9,6 +9,8 @@ use std::{fs, process};
 mod util;
 use util::shell;
 
+use anyhow::{Context, Result};
+
 mod program;
 
 #[derive(Parser, Debug)]
@@ -25,21 +27,22 @@ struct Args {
     features: Vec<String>,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let mut shell = shell::Shell::new();
     let args = Args::parse();
-    let vec_ast = match program::parser::Ast::parse_code(
-        fs::read_to_string(args.file_name)
-            .unwrap()
+    let vec_ast = program::parser::Ast::parse_code(
+        fs::read_to_string(&args.file_name)
+            .with_context(|| {
+                let _ = shell.error("File error");
+                format!("Failed to read file from {}", args.file_name)
+            })?
             .replace("\r\n", "")
             .as_str(),
-    ) {
-        Ok(ast) => ast,
-        Err(_e) => {
-            shell.error("Failed to read file").unwrap();
-            process::exit(1);
-        }
-    };
+    )
+    .with_context(|| {
+        let _ = shell.error("Parse error");
+        format!("Failed to parse file from {}", args.file_name)
+    })?;
     if args.only_parse {
         println!("{:#?}", vec_ast);
         exit(0);
