@@ -1,11 +1,9 @@
-#![feature(test)]
-
 use clap::Parser;
 use program::Program;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
+use std::fs;
 use std::process::exit;
-use std::{fs, process};
 mod util;
 use util::shell;
 
