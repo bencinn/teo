@@ -1,6 +1,9 @@
 [package]
-name = "teo"
+name = "teolang"
 version = "0.3.0"
+description = "A programming language design to be easy to learn for kids"
+license = "GNU-3.0-only"
+repository = "https://github.com/bencinn/teo"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -23,3 +26,7 @@ windows-sys = "0.48.0"
 default = ["print", "return"]
 print = []
 return = []
+
+[[bin]]
+name = "teo"
+path = "src/main.rs"

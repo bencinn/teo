@@ -24,7 +24,7 @@ pub enum Ast {
     /// (Can be nested)
     /// # Example
     /// ```rust
-    /// # use teo::program::parser::Ast;
+    /// # use teolang::program::parser::Ast;
     /// # use rust_decimal_macros::dec;
     /// let a: Ast = Ast::BinaryOp {
     ///     op: "+".to_string(),
@@ -270,7 +270,7 @@ impl Ast {
     /// # Example
     /// ### Parsing identifier
     /// ```rust
-    /// # use teo::program::parser::Ast;
+    /// # use teolang::program::parser::Ast;
     /// # use rust_decimal_macros::dec;
     /// # use std::collections::BTreeMap;
     /// assert_eq!(Ast::parse_code("x").unwrap(), Ast::Block(BTreeMap::from([(1, Ast::Identifier("x".to_string()))])));
@@ -278,7 +278,7 @@ impl Ast {
     ///
     /// ### Parsing set
     /// ```rust
-    /// # use teo::program::parser::Ast;
+    /// # use teolang::program::parser::Ast;
     /// # use rust_decimal_macros::dec;
     /// # use std::collections::BTreeMap;
     /// assert_eq!(Ast::parse_code("x = 0;").unwrap(), Ast::Block(BTreeMap::from([(1, Ast::Set {id: Box::new(Ast::Identifier("x".to_string())), expr: Box::new(Ast::Int(dec!(0)))})])));

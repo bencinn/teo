@@ -2,6 +2,7 @@
 name: CI
 
 permissions:
+  pull-requests: write
   contents: write
 
 on:
@@ -76,42 +77,18 @@ jobs:
         with:
           command: test
           args: --benches ${{ matrix.features }}
-  create-release:
-    name: deploy
-    needs: [test]
-    if: startsWith(github.ref, 'refs/tags/')
+  release-plz:
+    name: Release-plz
     runs-on: ubuntu-latest
-    strategy: 
-      matrix:
-        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-gnu]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v1
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
+      - name: Checkout repository
+        uses: actions/checkout@v3
         with:
-          toolchain: nightly
-          profile: minimal
-          override: true
-          target: ${{ matrix.target }}
-
-      - name: Build target
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --release --target ${{ matrix.target }}
-
-      - name: Package
-        shell: bash
-        run: |
-          cd target/${{ matrix.target }}/release
-          tar czvf ../../../teo-${{ matrix.target }}.tar.gz teo*
-          cd -
-          
-      - name: Publish
-        uses: softprops/action-gh-release@v1
-        with:
-            files: 'teo*'
+          fetch-depth: 0
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        uses: MarcoIeni/release-plz-action@v0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
