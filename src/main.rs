@@ -58,18 +58,20 @@ fn main() -> Result<()> {
     let mut program: Program = Program {
         commands: vec_ast,
         current_line: 0,
-        panic: false,
         variable: HashMap::new(),
         function: HashMap::new(),
         std_commands: features_list,
-        returnval: program::Data::Number(dec!(0)),
     };
     shell
         .status("Running", "with feature ".to_string() + &featureliststr)
         .unwrap();
-    program.run_loop(&mut Vec::new());
-    match program.returnval {
-        program::Data::Number(e) => exit(e.round().to_string().parse().unwrap()),
-        _ => unimplemented!(),
+    let output = program.run_loop(&mut Vec::new(), &mut shell);
+    if let Ok(returnval) = output {
+        match returnval {
+            program::Data::Number(e) => exit(e.round().to_string().parse().unwrap()),
+            _ => unimplemented!(),
+        }
+    } else {
+        shell.error("We fucked up")
     }
 }

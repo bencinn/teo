@@ -1,15 +1,16 @@
+use crate::util::shell::Shell;
+use anyhow::{anyhow, Result};
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
+
 pub mod parser;
 pub struct Program {
     pub commands: parser::Ast,
     pub current_line: usize,
-    pub panic: bool,
     pub variable: HashMap<String, Data>,
     pub function: HashMap<String, parser::Ast>,
     pub std_commands: Vec<String>,
-    pub returnval: Data,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -51,7 +52,7 @@ macro_rules! matchcmd {
                 #[cfg(feature = $function)]
                 $function => $body,
             )+
-            _ => panic!("Function isn't enabled"),
+            _ => Err(anyhow!("Function isn't enabled")),
         }
     };
 }
@@ -59,14 +60,26 @@ macro_rules! matchcmd {
 macro_rules! fep {
     ($program:ident, $args:expr, $parseto:ident, $writer:ident $body:block) => {
         for arg in $args {
-            let $parseto = arg.evaluate(&$program, $writer);
+            let $parseto = arg.evaluate(&$program, $writer).unwrap();
             $body
         }
     };
 }
 
+macro_rules! unrecov_err {
+    ($shell:ident, $($errormessage:tt)*) => {
+        let mesg = format!($($errormessage)*);
+        let _ = $shell.error(format!("Unrecoverable error: {}", mesg));
+        panic!("Unrecoverable error!")
+    }
+}
+
 impl Program {
-    pub fn run_loop(&mut self, mut writer: &mut impl std::io::Write) {
+    pub fn run_loop(
+        &mut self,
+        mut writer: &mut impl std::io::Write,
+        shell: &mut Shell,
+    ) -> Result<Data> {
         match &self.commands {
             parser::Ast::Block(commands) => {
                 for command in commands {
@@ -75,47 +88,54 @@ impl Program {
                             let value = expr.evaluate(&self, writer);
                             match id.as_ref() {
                                 parser::Ast::ArrayCall { id: array_id, k } => {
-                                    let index =
-                                        k.evaluate(&self, writer).as_number().to_usize().unwrap();
+                                    let index = k
+                                        .evaluate(&self, writer)
+                                        .unwrap()
+                                        .as_number()
+                                        .to_usize()
+                                        .unwrap();
 
                                     let array = self.variable.get_mut(array_id);
                                     if let Some(array) = array {
                                         if let Data::Array(elements) = array {
-                                            elements[index] = value;
+                                            elements[index] = value.unwrap();
                                         } else {
-                                            panic!(
+                                            unrecov_err!(
+                                                shell,
                                                 "Variable {} is not an array, cannot modify!",
-                                                id
+                                                array_id
                                             );
                                         }
                                     } else {
-                                        panic!("Variable (array) not found: {}", array_id);
+                                        unrecov_err!(
+                                            shell,
+                                            "Variable (array) not found: {}",
+                                            array_id
+                                        );
                                     }
                                 }
                                 _ => {
-                                    self.variable.insert(id.to_string(), value);
+                                    self.variable.insert(id.to_string(), value.unwrap());
                                 }
                             };
                         }
                         parser::Ast::If { condition, block } => {
                             let conditionresult = condition.evaluate(&self, writer);
-                            match conditionresult {
+                            match conditionresult.unwrap() {
                                 Data::Bool(e) => {
                                     if e {
                                         let mut program = Program {
                                             commands: *block.clone(),
                                             current_line: 0,
-                                            panic: false,
                                             variable: self.variable.clone(),
                                             function: self.function.clone(),
                                             std_commands: self.std_commands.clone(),
-                                            returnval: Data::Number(dec!(0)),
                                         };
-                                        program.run_loop(writer);
-                                        if program.panic {
+                                        if let Ok(_) = program.run_loop(writer, shell) {
+                                            self.variable = program.variable;
+                                        } else {
                                             panic!("Code block within If-else panicked!");
                                         }
-                                        self.variable = program.variable;
                                     }
                                 }
                                 _ => unimplemented!(),
@@ -142,14 +162,15 @@ impl Program {
                                         fep!(self, args, value, writer {
                                             println!("{}", value.as_string());
                                             write!(&mut writer, "{}", value.as_string()).unwrap();
-                                        })
+                                        });
+                                            Ok(Data::Number(dec!(0)))
                                     },
                                     "return" => {
                                         if let Some(arg) = args.first() {
-                                            let value = arg.evaluate(&self, writer);
-                                            self.returnval = value
+                                            let value = arg.evaluate(&self, writer).unwrap();
+                                            Ok(value)
                                         } else {
-                                            panic!("Need exit code for the return function!");
+                                            Err(anyhow!("Need to return only one value!"))
                                         }
                                     }
                                 }
@@ -166,7 +187,7 @@ impl Program {
                                         let mut local_variables = HashMap::new();
                                         for (i, arg) in args.iter().enumerate() {
                                             let (name, dtype) = &params[i];
-                                            let value = arg.evaluate(&self, writer);
+                                            let value = arg.evaluate(&self, writer).unwrap();
                                             match dtype.as_str() {
                                         "Integer" => {
                                             if let Data::Number(_) = value {
@@ -199,14 +220,12 @@ impl Program {
                                         let mut program = Program {
                                             commands: *body.clone(),
                                             current_line: 0,
-                                            panic: false,
                                             variable: local_variables,
                                             function: self.function.clone(),
                                             std_commands: self.std_commands.clone(),
-                                            returnval: Data::Number(dec!(0)),
                                         };
-                                        program.run_loop(writer);
-                                        if program.panic {
+                                        if let Ok(returncode) = program.run_loop(writer, shell) {
+                                        } else {
                                             panic!("Function `{}` panicked!", id);
                                         }
                                     }
@@ -222,63 +241,70 @@ impl Program {
             }
             _ => unimplemented!(),
         }
+        Ok(Data::Number(dec!(0)))
     }
 }
 
 trait Evaluate {
-    fn evaluate(&self, program: &Program, writer: &mut impl std::io::Write) -> Data;
+    fn evaluate(&self, program: &Program, writer: &mut impl std::io::Write) -> Result<Data>;
 }
 
 impl Evaluate for parser::Ast {
-    fn evaluate(&self, program: &Program, mut writer: &mut impl std::io::Write) -> Data {
+    fn evaluate(&self, program: &Program, mut writer: &mut impl std::io::Write) -> Result<Data> {
         let variables = &program.variable;
         match self {
-            parser::Ast::Int(i) => Data::Number(*i),
-            parser::Ast::Bool(b) => Data::Bool(*b),
+            parser::Ast::Int(i) => Ok(Data::Number(*i)),
+            parser::Ast::Bool(b) => Ok(Data::Bool(*b)),
             parser::Ast::Identifier(id) => match variables.get(id) {
-                Some(value) => value.clone(),
-                None => {
-                    panic!("Error: variable not found: {}", id)
-                }
+                Some(value) => Ok(value.clone()),
+                None => Err(anyhow!("Error: variable not found: {}", id)),
             },
             parser::Ast::BinaryOp { op, left, right } => {
-                let left_value = left.evaluate(program, writer);
-                let right_value = right.evaluate(program, writer);
+                let left_value = left.evaluate(program, writer).unwrap();
+                let right_value = right.evaluate(program, writer).unwrap();
                 let f1 = left_value.as_number();
                 let f2 = right_value.as_number();
                 match op.as_str() {
-                    "+" => Data::Number(f1 + f2),
-                    "-" => Data::Number(f1 - f2),
-                    "*" => Data::Number(f1 * f2),
-                    "/" => Data::Number(f1 / f2),
-                    "==" => Data::Bool(f1 == f2),
-                    "!=" => Data::Bool(f1 != f2),
-                    "<" => Data::Bool(f1 < f2),
-                    ">" => Data::Bool(f1 > f2),
-                    "<=" => Data::Bool(f1 <= f2),
-                    ">=" => Data::Bool(f1 >= f2),
+                    "+" => Ok(Data::Number(f1 + f2)),
+                    "-" => Ok(Data::Number(f1 - f2)),
+                    "*" => Ok(Data::Number(f1 * f2)),
+                    "/" => Ok(Data::Number(f1 / f2)),
+                    "==" => Ok(Data::Bool(f1 == f2)),
+                    "!=" => Ok(Data::Bool(f1 != f2)),
+                    "<" => Ok(Data::Bool(f1 < f2)),
+                    ">" => Ok(Data::Bool(f1 > f2)),
+                    "<=" => Ok(Data::Bool(f1 <= f2)),
+                    ">=" => Ok(Data::Bool(f1 >= f2)),
                     _ => panic!("{} is not a valid binary operator", op),
                 }
             }
-            parser::Ast::String(i) => Data::String(i.clone()),
+            parser::Ast::String(i) => Ok(Data::String(i.clone())),
             parser::Ast::Array(elements) => {
                 let mut array_data = Vec::new();
                 for element in elements {
-                    let element_data = element.evaluate(program, writer);
+                    let element_data = element.evaluate(program, writer).unwrap();
                     array_data.push(element_data);
                 }
-                Data::Array(array_data)
+                Ok(Data::Array(array_data))
             }
             parser::Ast::ArrayCall { id, k } => {
                 if let Some(array) = variables.get(id) {
                     if let Data::Array(elements) = array {
-                        let index = k.evaluate(program, writer).as_number().to_usize().unwrap();
+                        let index = k
+                            .evaluate(program, writer)
+                            .unwrap()
+                            .as_number()
+                            .to_usize()
+                            .unwrap();
                         if index >= elements.len() {
                             panic!("Error: array index out of bounds");
                         }
-                        elements[index].clone()
+                        Ok(elements[index].clone())
                     } else {
-                        panic!("Error: variable {} is not an array", id);
+                        Err(anyhow!(format!(
+                            "Variable {} is not an array, cannot modify!",
+                            id
+                        )))
                     }
                 } else {
                     panic!("Error: array variable not found: {}", id);
@@ -294,14 +320,14 @@ impl Evaluate for parser::Ast {
                                 println!("{}", value.as_string());
                                 write!(&mut writer, "{}", value.as_string()).unwrap();
                             });
-                            Data::Number(dec!(0))
+                                Ok(Data::Number(dec!(0)))
                         },
                         "return" => {
                             if let Some(arg) = args.first() {
-                                let value = arg.evaluate(program, writer);
-                                value
+                                let value = arg.evaluate(&program, writer).unwrap();
+                                Ok(value)
                             } else {
-                                panic!("Need exit code for the return function!");
+                                Err(anyhow!("Need to return only one value!"))
                             }
                         }
                     }
@@ -318,7 +344,7 @@ impl Evaluate for parser::Ast {
                             let mut local_variables = HashMap::new();
                             for (i, arg) in args.iter().enumerate() {
                                 let (name, dtype) = &params[i];
-                                let value = arg.evaluate(program, writer);
+                                let value = arg.evaluate(program, writer).unwrap();
                                 match dtype.as_str() {
                                         "Integer" => {
                                             if let Data::Number(_) = value {
@@ -351,17 +377,15 @@ impl Evaluate for parser::Ast {
                             let mut program = Program {
                                 commands: *body.clone(),
                                 current_line: 0,
-                                panic: false,
                                 variable: local_variables,
                                 function: program.function.clone(),
                                 std_commands: program.std_commands.clone(),
-                                returnval: Data::Number(dec!(0)),
                             };
-                            program.run_loop(writer);
-                            if program.panic {
+                            if let Ok(returncode) = program.run_loop(writer, &mut Shell::new()) {
+                                Ok(returncode)
+                            } else {
                                 panic!("Function `{}` panicked!", id);
                             }
-                            program.returnval
                         }
                         _ => panic!("`{}` is not a function!", id),
                     }
