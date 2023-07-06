@@ -46,13 +46,13 @@ impl Data {
 }
 
 macro_rules! matchcmd {
-    ($id:expr, {$($function:expr => $body:block),+}) => {
+    ($id:expr, $errmessage:expr, {$($function:expr => $body:block),+}) => {
         match $id.as_str() {
             $(
                 #[cfg(feature = $function)]
                 $function => $body,
             )+
-            _ => Err(anyhow!("Function isn't enabled")),
+            _ => Err(anyhow!($errmessage)),
         }
     };
 }
@@ -157,7 +157,7 @@ impl Program {
                         parser::Ast::FunctionCall { id, args } => {
                             let std_functions = self.std_commands.clone();
                             if std_functions.contains(id) {
-                                matchcmd!(id, {
+                                matchcmd!(id, "Function isn't enabled.", {
                                     "print" => {
                                         fep!(self, args, value, writer {
                                             println!("{}", value.as_string());
@@ -314,14 +314,7 @@ impl Evaluate for parser::Ast {
             parser::Ast::FunctionCall { id, args } => {
                 let std_functions = program.std_commands.clone();
                 if std_functions.contains(id) {
-                    matchcmd!(id, {
-                        "print" => {
-                            fep!(program, args, value, writer {
-                                println!("{}", value.as_string());
-                                write!(&mut writer, "{}", value.as_string()).unwrap();
-                            });
-                                Ok(Data::Number(dec!(0)))
-                        },
+                    matchcmd!(id, "Function isn't enabled or it can't be evaluated.", {
                         "return" => {
                             if let Some(arg) = args.first() {
                                 let value = arg.evaluate(&program, writer).unwrap();
