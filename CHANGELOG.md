@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2](https://github.com/bencinn/teo/compare/v0.3.1...v0.3.2) - 2023-07-16
+
+### Added
+- Adding custom error message to matchcmd and disable print on evaluate
+
+### Other
+- add build on release
+
 ## [0.3.1](https://github.com/bencinn/teo/releases/tag/v0.3.1) - 2023-06-26
 
 ### Other
