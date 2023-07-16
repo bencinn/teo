@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3](https://github.com/bencinn/teo/compare/v0.3.2...v0.3.3) - 2023-07-16
+
+### Other
+- release
+- add build on release
+
 ## [0.3.2](https://github.com/bencinn/teo/compare/v0.3.1...v0.3.2) - 2023-07-16
 
 ### Added
