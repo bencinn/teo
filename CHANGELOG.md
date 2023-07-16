@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4](https://github.com/bencinn/teo/compare/v0.3.3...v0.3.4) - 2023-07-16
+
+### Other
+- allow triggers of cd.yml
+
 ## [0.3.3](https://github.com/bencinn/teo/compare/v0.3.2...v0.3.3) - 2023-07-16
 
 ### Other
