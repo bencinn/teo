@@ -34,5 +34,14 @@ for i in n {
 print(x);
 print("Fuck");
 print(n[0]);
+def custom_pow(base: Number, power: Number) {
+    if (power <= 1) {
+        return(base);
+    };
+    if (power > 1) {
+        return(base * custom_pow(base, power - 1));
+    };
+};
+print(custom_pow(3, 4));
 return(0);
 print("Unreachable??");
