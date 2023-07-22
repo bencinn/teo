@@ -168,7 +168,7 @@ impl Program {
                                     "return" => {
                                         if let Some(arg) = args.first() {
                                             let value = arg.evaluate(&self, writer).unwrap();
-                                            Ok(value)
+                                            return Ok(value)
                                         } else {
                                             Err(anyhow!("Need to return only one value!"))
                                         }
