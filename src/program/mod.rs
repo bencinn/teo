@@ -388,6 +388,57 @@ impl Evaluate for parser::Ast {
                             let stdin = std::io::stdin();
                             stdin.read_line(&mut userInput);
                             Ok(Data::String(userInput))
+                        },
+                        "inputf" => {
+                            if let Some(format_arg) = args.first() {
+                                let format_string = format_arg.evaluate(&program, writer).unwrap().as_string();
+                                let mut user_input = String::new();
+
+                                // Read user input
+                                let stdin = std::io::stdin();
+                                stdin.read_line(&mut user_input).expect("Failed to read user input");
+
+                                // Split the format string into individual format specifiers
+                                let format_specifiers: Vec<&str> = format_string.trim().split(' ').collect();
+
+                                // Split the user input based on spaces and trim any leading/trailing whitespaces
+                                let user_values: Vec<&str> = user_input.trim().split(' ').collect();
+
+                                // Check if the number of format specifiers matches the number of user input values
+                                if format_specifiers.len() != user_values.len() {
+                                    return Err(anyhow!("Input does not match the specified format"));
+                                }
+
+                                // Convert user input values to the corresponding Data types based on format specifiers
+                                let mut result = Vec::new();
+                                for (i, &format_specifier) in format_specifiers.iter().enumerate() {
+                                    match format_specifier {
+                                        "%Number" => {
+                                            if let Ok(number) = Decimal::from_str(user_values[i]) {
+                                                result.push(Data::Number(number));
+                                            } else {
+                                                return Err(anyhow!("Invalid number format"));
+                                            }
+                                        },
+                                        "%String" => {
+                                            result.push(Data::String(String::from(user_values[i])));
+                                        },
+                                        "%Bool" => {
+                                            if let Ok(boolean) = bool::from_str(user_values[i]) {
+                                                result.push(Data::Bool(boolean));
+                                            } else {
+                                                return Err(anyhow!("Invalid boolean format"));
+                                            }
+                                        },
+                                        _ => {
+                                            return Err(anyhow!("Invalid format specifier: {}", format_specifier));
+                                        }
+                                    }
+                                }
+
+                                return Ok(Data::Array(result));
+                            }
+                            Ok(Data::Number(dec!(1)))
                         }
                     }
                     )

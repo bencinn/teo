@@ -22,6 +22,9 @@ l = a(true);
 print(l);
 print(3 + 4 * 2 - 6 / 3 * 2);
 input();
+x = inputf("%Number %String");
+print(x[0]);
+print(x[1]);
 n = split(input(), "1234");
 for i in n {
     print(i);
