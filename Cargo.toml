@@ -24,10 +24,11 @@ termcolor = "1.2.0"
 windows-sys = "0.48.0"
 
 [features]
-default = ["print", "return", "input"]
+default = ["print", "return", "input", "split"]
 print = []
 return = []
 input = []
+split = []
 
 [[bin]]
 name = "teo"

@@ -329,6 +329,30 @@ impl Evaluate for parser::Ast {
                                 Err(anyhow!("Need to return only one value!"))
                             }
                         },
+                        "split" => {
+                            if let Some(arg) = args.first() {
+                                let value = arg.evaluate(&program, writer).unwrap();
+                                let mut x = Vec::new();
+                                let mut splitVal = String::from("");
+                                if let Some(arg) = args.get(1) {
+                                    splitVal = arg.evaluate(&program, writer).unwrap().as_string();
+                                }
+                                for i in value.as_string().trim().split(splitVal.as_str()) {
+                                    if let Ok(n) = Decimal::from_str(i) {
+                                        x.push(Data::Number(n));
+                                    }
+                                    else {
+                                        match i {
+                                            "true" => {x.push(Data::Bool(true))},
+                                            "false" => {x.push(Data::Bool(false))},
+                                            _ => x.push(Data::String(String::from(i)))
+                                        }
+                                    }
+                                }
+                                return Ok(Data::Array(x))
+                            }
+                            Ok(Data::Number(dec!(1)))
+                        },
                         "input" => {
                             let mut userInput = String::new();
                             let stdin = std::io::stdin();
