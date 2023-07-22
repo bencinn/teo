@@ -23,6 +23,13 @@ serde_json = "1.0.96"
 termcolor = "1.2.0"
 windows-sys = "0.48.0"
 
+[target.'cfg(windows)'.dependencies.windows-sys]
+features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+    "Win32_Security"
+]
+
 [features]
 default = ["print", "return", "input", "split", "inputf"]
 print = []
