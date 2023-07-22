@@ -45,7 +45,12 @@ fn main() -> Result<()> {
         println!("{:#?}", vec_ast);
         exit(0);
     };
-    let mut features_list = vec!["return".to_owned(), "print".to_owned(), "input".to_owned(), "split".to_owned()];
+    let mut features_list = vec![
+        "return".to_owned(),
+        "print".to_owned(),
+        "input".to_owned(),
+        "split".to_owned(),
+    ];
     for feature in &args.features {
         if !features_list.contains(&feature) {
             features_list.push(feature.to_string());
