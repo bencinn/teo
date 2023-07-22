@@ -26,9 +26,12 @@ x = inputf("%Number %String");
 print(x[0]);
 print(x[1]);
 n = split(input(), "1234");
+x = 0;
 for i in n {
     print(i);
+    x = x + 1;
 };
+print(x);
 print("Fuck");
 print(n[0]);
 return(0);

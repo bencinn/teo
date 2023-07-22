@@ -250,7 +250,7 @@ impl Program {
                             match collection {
                                 Data::Array(array) => {
                                     for item in array.iter() {
-                                        let mut local_variables = HashMap::new();
+                                        let mut local_variables = self.variable.clone();
                                         local_variables.insert(element.to_string(), item.clone());
                                         let mut program = Program {
                                             commands: *block.clone(),
@@ -262,6 +262,7 @@ impl Program {
                                         if let Err(_) = program.run_loop(writer, shell) {
                                             panic!("For loop panicked!");
                                         }
+                                        self.variable = program.variable;
                                     }
                                 }
                                 _ => {
