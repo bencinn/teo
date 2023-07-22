@@ -172,6 +172,12 @@ impl Program {
                                         } else {
                                             Err(anyhow!("Need to return only one value!"))
                                         }
+                                    },
+                                    "input" => {
+                                        let mut userInput = String::new();
+                                        let stdin = std::io::stdin();
+                                            stdin.read_line(&mut userInput);
+                                        Ok(Data::Number(dec!(0)))
                                     }
                                 }
                                 );
@@ -322,6 +328,12 @@ impl Evaluate for parser::Ast {
                             } else {
                                 Err(anyhow!("Need to return only one value!"))
                             }
+                        },
+                        "input" => {
+                            let mut userInput = String::new();
+                            let stdin = std::io::stdin();
+                            stdin.read_line(&mut userInput);
+                            Ok(Data::String(userInput))
                         }
                     }
                     )
