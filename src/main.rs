@@ -1,5 +1,5 @@
 use clap::Parser;
-use program::Program;
+use program::{returntype, Program};
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 use std::fs;
@@ -74,7 +74,10 @@ fn main() -> Result<()> {
     let output = program.run_loop(&mut Vec::new(), &mut shell);
     if let Ok(returnval) = output {
         match returnval {
-            program::Data::Number(e) => exit(e.round().to_string().parse().unwrap()),
+            returntype::Ok(program::Data::Number(e)) => {
+                exit(e.round().to_string().parse().unwrap())
+            }
+            returntype::None => exit(0),
             _ => unimplemented!(),
         }
     } else {

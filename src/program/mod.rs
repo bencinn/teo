@@ -4,6 +4,11 @@ use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
+pub enum returntype {
+    Ok(Data),
+    None,
+}
+
 pub mod parser;
 pub struct Program {
     pub commands: parser::Ast,
@@ -79,7 +84,7 @@ impl Program {
         &mut self,
         mut writer: &mut impl std::io::Write,
         shell: &mut Shell,
-    ) -> Result<Data> {
+    ) -> Result<returntype> {
         match &self.commands {
             parser::Ast::Block(commands) => {
                 for command in commands {
@@ -133,7 +138,10 @@ impl Program {
                                         };
                                         if let Ok(returnval) = program.run_loop(writer, shell) {
                                             self.variable = program.variable;
-                                            return Ok(returnval);
+                                            match returnval {
+                                                returntype::Ok(x) => return Ok(returntype::Ok(x)),
+                                                returntype::None => {}
+                                            }
                                         } else {
                                             panic!("Code block within If-else panicked!");
                                         }
@@ -169,7 +177,7 @@ impl Program {
                                     "return" => {
                                         if let Some(arg) = args.first() {
                                             let value = arg.evaluate(&self, writer).unwrap();
-                                            return Ok(value)
+                                            return Ok(returntype::Ok(value))
                                         } else {
                                             Err(anyhow!("Need to return only one value!"))
                                         }
@@ -279,7 +287,7 @@ impl Program {
             }
             _ => unimplemented!(),
         }
-        Ok(Data::Number(dec!(0)))
+        Ok(returntype::None)
     }
 }
 
@@ -493,8 +501,12 @@ impl Evaluate for parser::Ast {
                                 function: program.function.clone(),
                                 std_commands: program.std_commands.clone(),
                             };
-                            if let Ok(returncode) = program.run_loop(writer, &mut Shell::new()) {
-                                Ok(returncode)
+                            let returncode = program.run_loop(writer, &mut Shell::new());
+                            if let Ok(ret) = returncode {
+                                match ret {
+                                    returntype::None => Ok(Data::Number(dec!(0))),
+                                    returntype::Ok(red) => Ok(red),
+                                }
                             } else {
                                 panic!("Function `{}` panicked!", id);
                             }
