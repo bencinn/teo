@@ -201,6 +201,7 @@ peg::parser! {
         / ">" {
             ">".to_string()
         }
+        #[cache]
         rule comparison() -> Ast = left: term() _ op: comparison_op() _ right: term() {
             Ast::BinaryOp {
                 op,
