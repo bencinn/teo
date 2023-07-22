@@ -363,7 +363,7 @@ impl Evaluate for parser::Ast {
                             if let Some(arg) = args.first() {
                                 let value = arg.evaluate(&program, writer).unwrap();
                                 let mut x = Vec::new();
-                                let mut splitVal = String::from("");
+                                let mut splitVal = String::from(" ");
                                 if let Some(arg) = args.get(1) {
                                     splitVal = arg.evaluate(&program, writer).unwrap().as_string();
                                 }
