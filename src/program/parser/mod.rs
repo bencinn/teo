@@ -242,13 +242,18 @@ peg::parser! {
                 block: Box::new(Ast::Block(block)),
             }
         }
-        rule term() -> Ast = left: factor() _ op: $(['*' | '/']) _ right: term() {
-            Ast::BinaryOp {
-                op: op.to_string(),
-                left: Box::new(left),
-                right: Box::new(right),
+        rule term() -> Ast = left: factor() op: $(['*' | '/'])? right: term()? {
+            if let Some(op) = op {
+                Ast::BinaryOp {
+                    op: op.to_string(),
+                    left: Box::new(left),
+                    right: Box::new(right.unwrap_or(Ast::Bool(true))), // Replace None with default value
+                }
+            } else {
+                left
             }
         }
+
         / left: factor() _ op: $(['+' | '-']) _ right: term() {
             Ast::BinaryOp {
                 op: op.to_string(),
