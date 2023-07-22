@@ -131,8 +131,9 @@ impl Program {
                                             function: self.function.clone(),
                                             std_commands: self.std_commands.clone(),
                                         };
-                                        if let Ok(_) = program.run_loop(writer, shell) {
+                                        if let Ok(returnval) = program.run_loop(writer, shell) {
                                             self.variable = program.variable;
+                                            return Ok(returnval);
                                         } else {
                                             panic!("Code block within If-else panicked!");
                                         }
@@ -457,7 +458,7 @@ impl Evaluate for parser::Ast {
                                 let (name, dtype) = &params[i];
                                 let value = arg.evaluate(program, writer).unwrap();
                                 match dtype.as_str() {
-                                        "Integer" => {
+                                        "Number" => {
                                             if let Data::Number(_) = value {
                                             } else {
                                                 panic!("Wrong type for function: expected {}!", dtype);
