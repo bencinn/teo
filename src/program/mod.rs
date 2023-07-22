@@ -195,7 +195,7 @@ impl Program {
                                             let (name, dtype) = &params[i];
                                             let value = arg.evaluate(&self, writer).unwrap();
                                             match dtype.as_str() {
-                                        "Integer" => {
+                                        "Number" => {
                                             if let Data::Number(_) = value {
                                             } else {
                                                 panic!("Wrong type for function: expected {}!", dtype);

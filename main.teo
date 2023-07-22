@@ -1,4 +1,4 @@
-def i(a: Integer){
+def i(a: Number){
   print(a + 3 * 4);
 };
 n = 3;
