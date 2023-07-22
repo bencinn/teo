@@ -87,6 +87,11 @@ pub enum Ast {
         /// The code block that will run if condition evaluated to true
         block: Box<Ast>,
     },
+    ForLoop {
+        element: Box<Ast>,
+        elements: Box<Ast>,
+        block: Box<Ast>,
+    },
 }
 
 impl fmt::Display for Ast {
@@ -224,6 +229,19 @@ peg::parser! {
         ) / function() / function_call() / array() / array_call() / atom() / "(" _ expr: expression() _ ")" {
             expr
         }
+        rule for_loop() -> Ast = "for" _ id: identifier() _ "in" _ collection: expression() _ "{" _ body:(expression() **(_ ";" _)) _ ";" _ "}" {
+            let mut block = BTreeMap::new();
+            let mut k = 0;
+            for i in body {
+                block.insert(k, i);
+                k += 1;
+            }
+            Ast::ForLoop {
+                element: Box::new(Ast::Identifier(id.to_string())),
+                elements: Box::new(collection),
+                block: Box::new(Ast::Block(block)),
+            }
+        }
         rule term() -> Ast = left: factor() _ op: $(['*' | '/']) _ right: term() {
             Ast::BinaryOp {
                 op: op.to_string(),
@@ -252,6 +270,7 @@ peg::parser! {
                 right: Box::new(right),
             }
         }
+        / for_loop()
         / comparison() pub rule program() -> Ast = _ exprs:(expression() **(";" _)) _ ";" ? _ {
             let mut tree = BTreeMap::new();
             let mut i = 0;

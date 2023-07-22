@@ -241,7 +241,37 @@ impl Program {
                                 panic!("Function `{}` is not defined!", id);
                             }
                         }
-                        _ => {}
+                        parser::Ast::ForLoop {
+                            element,
+                            elements,
+                            block,
+                        } => {
+                            let collection = elements.evaluate(&self, writer)?;
+                            match collection {
+                                Data::Array(array) => {
+                                    for item in array.iter() {
+                                        let mut local_variables = HashMap::new();
+                                        local_variables.insert(element.to_string(), item.clone());
+                                        let mut program = Program {
+                                            commands: *block.clone(),
+                                            current_line: 0,
+                                            variable: local_variables,
+                                            function: self.function.clone(),
+                                            std_commands: self.std_commands.clone(),
+                                        };
+                                        if let Err(_) = program.run_loop(writer, shell) {
+                                            panic!("For loop panicked!");
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    panic!("For loop collection must be an array!");
+                                }
+                            }
+                        }
+                        _ => {
+                            unimplemented!()
+                        }
                     }
                 }
             }

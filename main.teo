@@ -23,5 +23,9 @@ print(l);
 print(3 + 4 * 2 - 6 / 3 * 2);
 input();
 n = split(input(), "1234");
+for i in n {
+    print(i);
+};
+print("Fuck");
 print(n[0]);
 return(0);
