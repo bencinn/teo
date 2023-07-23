@@ -4,7 +4,7 @@ use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
-pub enum returntype {
+pub enum ReturnType {
     Ok(Data),
     None,
 }
@@ -84,7 +84,7 @@ impl Program {
         &mut self,
         mut writer: &mut impl std::io::Write,
         shell: &mut Shell,
-    ) -> Result<returntype> {
+    ) -> Result<ReturnType> {
         match &self.commands {
             parser::Ast::Block(commands) => {
                 for command in commands {
@@ -139,8 +139,8 @@ impl Program {
                                         if let Ok(returnval) = program.run_loop(writer, shell) {
                                             self.variable = program.variable;
                                             match returnval {
-                                                returntype::Ok(x) => return Ok(returntype::Ok(x)),
-                                                returntype::None => {}
+                                                ReturnType::Ok(x) => return Ok(ReturnType::Ok(x)),
+                                                ReturnType::None => {}
                                             }
                                         } else {
                                             panic!("Code block within If-else panicked!");
@@ -177,7 +177,7 @@ impl Program {
                                     "return" => {
                                         if let Some(arg) = args.first() {
                                             let value = arg.evaluate(&self, writer).unwrap();
-                                            return Ok(returntype::Ok(value))
+                                            return Ok(ReturnType::Ok(value))
                                         } else {
                                             Err(anyhow!("Need to return only one value!"))
                                         }
@@ -287,7 +287,7 @@ impl Program {
             }
             _ => unimplemented!(),
         }
-        Ok(returntype::None)
+        Ok(ReturnType::None)
     }
 }
 
@@ -296,7 +296,7 @@ trait Evaluate {
 }
 
 impl Evaluate for parser::Ast {
-    fn evaluate(&self, program: &Program, mut writer: &mut impl std::io::Write) -> Result<Data> {
+    fn evaluate(&self, program: &Program, writer: &mut impl std::io::Write) -> Result<Data> {
         let variables = &program.variable;
         match self {
             parser::Ast::Int(i) => Ok(Data::Number(*i)),
@@ -504,8 +504,8 @@ impl Evaluate for parser::Ast {
                             let returncode = program.run_loop(writer, &mut Shell::new());
                             if let Ok(ret) = returncode {
                                 match ret {
-                                    returntype::None => Ok(Data::Number(dec!(0))),
-                                    returntype::Ok(red) => Ok(red),
+                                    ReturnType::None => Ok(Data::Number(dec!(0))),
+                                    ReturnType::Ok(red) => Ok(red),
                                 }
                             } else {
                                 panic!("Function `{}` panicked!", id);
