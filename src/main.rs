@@ -1,6 +1,5 @@
 use clap::Parser;
 use program::{Program, ReturnType};
-use rust_decimal_macros::dec;
 use std::collections::HashMap;
 use std::fs;
 use std::process::exit;
@@ -51,7 +50,6 @@ fn main() -> Result<()> {
         "input".to_owned(),
         "split".to_owned(),
         "inputf".to_owned(),
-        "join".to_owned(),
     ];
     for feature in &args.features {
         if !features_list.contains(&feature) {
