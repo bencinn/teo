@@ -38,12 +38,13 @@ features = [
 ]
 
 [features]
-default = ["print", "return", "input", "split", "inputf"]
+default = ["print", "return", "input", "split", "inputf", "join"]
 print = []
 return = []
 input = []
 split = []
 inputf = []
+join = []
 
 [[bin]]
 name = "teo"

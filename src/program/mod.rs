@@ -393,6 +393,21 @@ impl Evaluate for parser::Ast {
                             }
                             Ok(Data::Number(dec!(1)))
                         },
+                        "join" => {
+                            if let (Some(left), Some(right)) = (args.get(0), args.get(1)) {
+                                if let (Ok(l), Ok(r)) = (left.evaluate(&program, writer), right.evaluate(&program, writer)) {
+                                    match (l, r) {
+                                        (Data::Array(l), Data::Array(r)) => {return Ok(Data::Array([l, r].concat()))}
+                                        _ => panic!("Both argument needs to be an array!")
+                                    }
+                                }
+                                else {
+                                    panic!("Unable to parse!")
+                                }
+                            } else {
+                                panic!("Not enough argument!")
+                            }
+                        },
                         "input" => {
                             let mut userInput = String::new();
                             let stdin = std::io::stdin();

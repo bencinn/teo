@@ -51,6 +51,7 @@ fn main() -> Result<()> {
         "input".to_owned(),
         "split".to_owned(),
         "inputf".to_owned(),
+        "join".to_owned(),
     ];
     for feature in &args.features {
         if !features_list.contains(&feature) {
