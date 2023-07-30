@@ -268,7 +268,7 @@ impl Program {
                                             function: self.function.clone(),
                                             std_commands: self.std_commands.clone(),
                                         };
-                                        if let Err(_) = program.run_loop(writer, shell) {
+                                        if program.run_loop(writer, shell).is_err() {
                                             panic!("For loop panicked!");
                                         }
                                         self.variable = program.variable;
