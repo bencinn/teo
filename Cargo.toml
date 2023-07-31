@@ -14,7 +14,6 @@ anyhow = "1.0.71"
 clap = { version = "4.1.8", features = ["suggestions", "color", "help", "derive"] }
 fwdansi = "1.1.0"
 libc = "0.2.146"
-peg = "0.8.1"
 rand = "0.8.5"
 rust_decimal = { version = "1.31.0", features = ["maths"] }
 rust_decimal_macros = "1.31.0"
@@ -22,6 +21,9 @@ serde = "1.0.164"
 serde_json = "1.0.96"
 termcolor = "1.2.0"
 windows-sys = "0.48.0"
+pest = "2.1"
+pest_derive = "2.1"
+pest_consume = "1.0.0"
 
 [dev-dependencies]
 criterion = "0.3"

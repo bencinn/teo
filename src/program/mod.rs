@@ -88,7 +88,7 @@ impl Program {
         match &self.commands {
             parser::Ast::Block(commands) => {
                 for command in commands {
-                    match command.1 {
+                    match command {
                         parser::Ast::Set { id, expr } => {
                             let value = expr.evaluate(&self, writer);
                             match id.as_ref() {
