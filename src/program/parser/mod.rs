@@ -160,7 +160,7 @@ fn parse_expr(pairs: Pairs<Rule>, pratt: &PrattParser<Rule>) -> Ast {
             Rule::int => Ast::Int(Decimal::from_str_exact(&primary.as_str()).unwrap()),
             Rule::expr => parse_expr(primary.into_inner(), pratt), // from "(" ~ expr ~ ")"
             Rule::command => handle_command(primary, pratt),
-            Rule::ident => Ast::Identifier(primary.as_str().to_string()),
+            Rule::ident => Ast::Identifier(primary.as_str().trim().to_string()),
             Rule::string => Ast::String(parse_string(primary)),
             Rule::bool => match primary.as_str() {
                 "true" => Ast::Bool(true),
@@ -225,6 +225,7 @@ fn handle_block(j: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -
             Rule::ifs => {
                 ast.push(handle_ifs(p, &pratt));
             }
+            Rule::def => ast.push(handle_def(p, pratt)),
             _ => {
                 unimplemented!()
             }
@@ -268,6 +269,7 @@ fn handle_ifs(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> 
             Rule::block => {
                 block.append(&mut handle_block(i, pratt));
             }
+            Rule::command => block.push(handle_command(i, pratt)),
             _ => unreachable!(),
         }
     }
@@ -275,6 +277,40 @@ fn handle_ifs(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> 
         condition: Box::new(condition),
         block: Box::new(Ast::Block(block)),
     }
+}
+fn handle_def(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    println!("{:?}", p);
+    let mut ident = "";
+    let mut params = vec![];
+    let mut body = vec![];
+    for i in p.into_inner() {
+        println!("{:?}", i.as_rule());
+        match i.as_rule() {
+            Rule::ident => ident = i.as_str(),
+            Rule::defargs => {
+                for j in i.into_inner() {
+                    let mut p_name = String::new();
+                    let mut p_type = String::new();
+                    j.into_inner().into_iter().for_each(|f| match f.as_rule() {
+                        Rule::ident => p_name = f.as_str().trim().to_string(),
+                        Rule::p_type => p_type = f.as_str().to_string(),
+                        _ => unreachable!(),
+                    });
+                    params.push((p_name, p_type));
+                }
+            }
+            Rule::command => body.push(handle_command(i, pratt)),
+            Rule::block => body.append(&mut handle_block(i, pratt)),
+            _ => unreachable!(),
+        }
+    }
+    let returnast = Ast::FunctionDefinition {
+        id: ident.to_string(),
+        params: params,
+        body: Box::new(Ast::Block(body)),
+    };
+    println!("{:?}", returnast);
+    returnast
 }
 fn handle_command(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
     let mut fn_identifier = None;
@@ -285,7 +321,7 @@ fn handle_command(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>)
             Rule::args => i
                 .into_inner()
                 .for_each(|f| args.push(parse_expr(f.into_inner(), pratt))),
-            _ => unimplemented!(),
+            _ => unreachable!(),
         }
     }
     if let Some(i) = fn_identifier {

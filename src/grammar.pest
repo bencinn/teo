@@ -1,7 +1,7 @@
 WHITESPACE = _{ " " | "\t" | NEWLINE }
 
 program = { SOI ~ block ~ EOI }
-block   = { ((command ~ ";") | (set ~ ";") | (ifs))+ }
+block   = { ((command ~ ";") | (set ~ ";") | (ifs) | (def))+ }
 expr    = { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ postfix*)* }
 
 string = { "\"" ~ (raw_string | escape)* ~ "\"" }
@@ -18,9 +18,13 @@ bool = @{"true" | "false"}
 
 command = { ident ~ "(" ~ args? ~ ")" }
 set     = { ident ~ "=" ~ expr }
-ifs      = { "if" ~ "(" ~ expr ~ ")" ~ "{" ~ block ~ "}" }
+ifs = { "if" ~ "(" ~ expr ~ ")" ~ ("{" ~ block ~ "}" | command ~ ";") }
+def = { "def" ~ ident ~ "(" ~ defargs? ~ ")" ~ ("{" ~ block ~ "}" | command ~ ";") }
 
 args         =  { expr ~ ("," ~ expr)* }
+p_type = {"Number" | "String" | "Bool"}
+defarg = {ident ~ ":" ~ p_type}
+defargs         =  { defarg ~ ("," ~ defarg)* }
 alpha        =  { 'a'..'z' | 'A'..'Z' }
 digit        =  { '0'..'9' }
 ident        =  { alpha+ }
