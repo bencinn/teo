@@ -5,7 +5,7 @@ use pest::{
 };
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
-use std::{collections::BTreeMap, fmt};
+use std::fmt;
 
 extern crate pest;
 
@@ -142,7 +142,13 @@ fn parse_string(s: pest::iterators::Pair<'_, Rule>) -> String {
                         .to_string()
                         .as_str()
             }
-            _ => unimplemented!("{:?}", i.as_span()),
+            Rule::byte => {
+                str = str
+                    + (i.as_str().parse::<u8>().expect("To parse") as char)
+                        .to_string()
+                        .as_str()
+            }
+            _ => unimplemented!("{:?}", i),
         };
     }
     str

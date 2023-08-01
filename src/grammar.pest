@@ -9,9 +9,10 @@ raw_string = { (!("\\" | "\"") ~ ANY)+ }
 predefined = { "n" | "r" | "t" | "\\" | "0" | "\"" | "'" }
 hex = _{ '0'..'9' | 'a'..'f' | 'A'..'F' }
 unicode_hex = { hex{1, 6} }
-byte       = { "x" ~ hex{2} }
+byte = { hex{2} }
+byte_escape       = _{ "x" ~ byte }
 unicode    = _{ "u" ~ "{" ~ unicode_hex ~ "}" }
-escape     = _{ "\\" ~ (predefined | byte | unicode) }
+escape     = _{ "\\" ~ (predefined | byte_escape | unicode) }
 
 bool = @{"true" | "false"}
 
