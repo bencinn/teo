@@ -1,7 +1,7 @@
 print(1+2/3, 3/4+1, -2);
 x = 2;
 print(input());
-print("Hi mom");
+print("Hi m\u{006F}m");
 if (true) {
     print(x);
 }

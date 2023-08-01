@@ -131,14 +131,21 @@ impl fmt::Display for Ast {
 }
 
 fn parse_string(s: pest::iterators::Pair<'_, Rule>) -> String {
+    let mut str = "".to_string();
     for i in s.into_inner() {
-        println!("{:#?}", i.as_span());
-        return match i.as_rule() {
-            Rule::raw_string => i.as_str().to_string(),
-            _ => unimplemented!(),
+        match i.as_rule() {
+            Rule::raw_string => str = str + i.as_str(),
+            Rule::unicode_hex => {
+                str = str
+                    + std::char::from_u32(u32::from_str_radix(i.as_str(), 16).unwrap())
+                        .unwrap()
+                        .to_string()
+                        .as_str()
+            }
+            _ => unimplemented!("{:?}", i.as_span()),
         };
     }
-    unimplemented!()
+    str
 }
 
 fn parse_expr(pairs: Pairs<Rule>, pratt: &PrattParser<Rule>) -> Ast {
@@ -196,7 +203,29 @@ fn parse_expr(pairs: Pairs<Rule>, pratt: &PrattParser<Rule>) -> Ast {
         })
         .parse(pairs)
 }
-
+fn handle_block(j: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Vec<Ast> {
+    let mut ast = vec![];
+    for p in j.into_inner() {
+        match p.as_rule() {
+            Rule::expr => {
+                ast.push(parse_expr(p.into_inner(), &pratt));
+            }
+            Rule::command => {
+                ast.push(handle_command(p, &pratt));
+            }
+            Rule::set => {
+                ast.push(handle_set(p, &pratt));
+            }
+            Rule::ifs => {
+                ast.push(handle_ifs(p, &pratt));
+            }
+            _ => {
+                unimplemented!()
+            }
+        }
+    }
+    ast
+}
 fn parse_code(source: &str) -> Result<Vec<Ast>, pest::error::Error<Rule>> {
     let mut ast = vec![];
     let pratt = PrattParser::new()
@@ -211,27 +240,7 @@ fn parse_code(source: &str) -> Result<Vec<Ast>, pest::error::Error<Rule>> {
             Rule::program => {
                 for j in pair.into_inner() {
                     match j.as_rule() {
-                        Rule::block => {
-                            for p in j.into_inner() {
-                                match p.as_rule() {
-                                    Rule::expr => {
-                                        ast.push(parse_expr(p.into_inner(), &pratt));
-                                    }
-                                    Rule::command => {
-                                        ast.push(handle_command(p, &pratt));
-                                    }
-                                    Rule::set => {
-                                        ast.push(handle_set(p, &pratt));
-                                    }
-                                    Rule::ifs => {
-                                        // unimplemented!()
-                                    }
-                                    _ => {
-                                        unimplemented!("{:?}", p)
-                                    }
-                                }
-                            }
-                        }
+                        Rule::block => ast.append(&mut handle_block(j, &pratt)),
                         Rule::EOI => {}
                         _ => unreachable!(),
                     }
@@ -241,6 +250,25 @@ fn parse_code(source: &str) -> Result<Vec<Ast>, pest::error::Error<Rule>> {
         }
     }
     Ok(ast)
+}
+fn handle_ifs(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut condition = Ast::Bool(true);
+    let mut block = vec![];
+    for i in p.into_inner() {
+        match i.as_rule() {
+            Rule::expr => {
+                condition = parse_expr(i.into_inner(), pratt);
+            }
+            Rule::block => {
+                block.append(&mut handle_block(i, pratt));
+            }
+            _ => unreachable!(),
+        }
+    }
+    Ast::If {
+        condition: Box::new(condition),
+        block: Box::new(Ast::Block(block)),
+    }
 }
 fn handle_command(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
     let mut fn_identifier = None;

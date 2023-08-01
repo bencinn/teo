@@ -6,12 +6,12 @@ expr    = { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ postfix*
 
 string = { "\"" ~ (raw_string | escape)* ~ "\"" }
 raw_string = { (!("\\" | "\"") ~ ANY)+ }
-predefined = @{ "n" | "r" | "t" | "\\" | "0" | "\"" | "'" }
+predefined = { "n" | "r" | "t" | "\\" | "0" | "\"" | "'" }
 hex = _{ '0'..'9' | 'a'..'f' | 'A'..'F' }
-unicode_hex = @{ hex{1, 6} }
-byte       = @{ "x" ~ hex{2} }
-unicode    = @{ "u" ~ "{" ~ unicode_hex ~ "}" }
-escape     = @{ "\\" ~ (predefined | byte | unicode) }
+unicode_hex = { hex{1, 6} }
+byte       = { "x" ~ hex{2} }
+unicode    = _{ "u" ~ "{" ~ unicode_hex ~ "}" }
+escape     = _{ "\\" ~ (predefined | byte | unicode) }
 
 bool = @{"true" | "false"}
 
@@ -41,5 +41,5 @@ neg    =  { "-" }
 postfix = _{ fac }
 fac     =  { "!" }
 // Factorial
-primary = _{ command | int | "(" ~ expr ~ ")" | ident | string }
+primary = _{ bool | command | int | "(" ~ expr ~ ")" | ident | string }
 int     = @{ (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ | ASCII_DIGIT) }
