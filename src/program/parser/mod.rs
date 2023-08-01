@@ -1,5 +1,5 @@
 use pest::{
-    iterators::Pairs,
+    iterators::{Pair, Pairs},
     pratt_parser::{Assoc, Op, PrattParser},
     Parser,
 };
@@ -154,6 +154,26 @@ fn parse_string(s: pest::iterators::Pair<'_, Rule>) -> String {
     str
 }
 
+fn handle_arr(primary: Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    for i in primary.into_inner().into_iter() {
+        match i.as_rule() {
+            Rule::indexable_expr => println!("{:?}", parse_expr(i.into_inner(), pratt)),
+            _ => {}
+        }
+    }
+    Ast::Bool(true)
+}
+
+fn handle_array(primary: Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut x = vec![];
+    primary.into_inner().into_iter().for_each(|f| {
+        f.into_inner()
+            .into_iter()
+            .for_each(|j| x.push(parse_expr(j.into_inner(), pratt)))
+    });
+    Ast::Array(x)
+}
+
 fn parse_expr(pairs: Pairs<Rule>, pratt: &PrattParser<Rule>) -> Ast {
     pratt
         .map_primary(|primary| match primary.as_rule() {
@@ -167,6 +187,8 @@ fn parse_expr(pairs: Pairs<Rule>, pratt: &PrattParser<Rule>) -> Ast {
                 "false" => Ast::Bool(false),
                 _ => unreachable!(),
             },
+            Rule::array => handle_array(primary, pratt),
+            Rule::arr => handle_arr(primary, pratt),
             _ => unreachable!(),
         })
         .map_prefix(|op, rhs| match op.as_rule() {

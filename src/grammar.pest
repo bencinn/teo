@@ -4,47 +4,55 @@ program = { SOI ~ block ~ EOI }
 block   = { ((command ~ ";") | (set ~ ";") | (ifs) | (def))+ }
 expr    = { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ postfix*)* }
 
-string = { "\"" ~ (raw_string | escape)* ~ "\"" }
-raw_string = { (!("\\" | "\"") ~ ANY)+ }
-predefined = { "n" | "r" | "t" | "\\" | "0" | "\"" | "'" }
-hex = _{ '0'..'9' | 'a'..'f' | 'A'..'F' }
-unicode_hex = { hex{1, 6} }
-byte = { hex{2} }
-byte_escape       = _{ "x" ~ byte }
-unicode    = _{ "u" ~ "{" ~ unicode_hex ~ "}" }
-escape     = _{ "\\" ~ (predefined | byte_escape | unicode) }
+string      =  { "\"" ~ (raw_string | escape)* ~ "\"" }
+raw_string  =  { (!("\\" | "\"") ~ ANY)+ }
+predefined  =  { "n" | "r" | "t" | "\\" | "0" | "\"" | "'" }
+hex         = _{ '0'..'9' | 'a'..'f' | 'A'..'F' }
+unicode_hex =  { hex{1, 6} }
+byte        =  { hex{2} }
+byte_escape = _{ "x" ~ byte }
+unicode     = _{ "u" ~ "{" ~ unicode_hex ~ "}" }
+escape      = _{ "\\" ~ (predefined | byte_escape | unicode) }
 
-bool = @{"true" | "false"}
+bool = @{ "true" | "false" }
 
 command = { ident ~ "(" ~ args? ~ ")" }
 set     = { ident ~ "=" ~ expr }
-ifs = { "if" ~ "(" ~ expr ~ ")" ~ ("{" ~ block ~ "}" | command ~ ";") }
-def = { "def" ~ ident ~ "(" ~ defargs? ~ ")" ~ ("{" ~ block ~ "}" | command ~ ";") }
+ifs     = { "if" ~ "(" ~ expr ~ ")" ~ ("{" ~ block ~ "}" | command ~ ";") }
+def     = { "def" ~ ident ~ "(" ~ defargs? ~ ")" ~ ("{" ~ block ~ "}" | command ~ ";") }
 
-args         =  { expr ~ ("," ~ expr)* }
-p_type = {"Number" | "String" | "Bool"}
-defarg = {ident ~ ":" ~ p_type}
-defargs         =  { defarg ~ ("," ~ defarg)* }
+args    = { expr ~ ("," ~ expr)* }
+p_type  = { "Number" | "String" | "Bool" }
+defarg  = { ident ~ ":" ~ p_type }
+defargs = { defarg ~ ("," ~ defarg)* }
+
+array          = { "[" ~ array_elements? ~ "]" }
+array_elements = { expr ~ ("," ~ expr)* }
+
 alpha        =  { 'a'..'z' | 'A'..'Z' }
 digit        =  { '0'..'9' }
+ident_array  =  { alpha+ ~ ("[" ~ (from_to_index | from_index | to_index | index) ~ "]")? }
 ident        =  { alpha+ }
 comparisonop = @{ (">" | "<") ~ "="? }
 infix        = _{ add | sub | mul | div | pow | comparisonop }
 add          =  { "+" }
-// Addition
-sub = { "-" }
-// Subtraction
-mul = { "*" }
-// Multiplication
-div = { "/" }
-// Division
-pow = { "^" }
-// Exponentiation
-prefix = _{ neg }
-neg    =  { "-" }
-// Negation
+sub          =  { "-" }
+mul          =  { "*" }
+div          =  { "/" }
+pow          =  { "^" }
+
+index         = { int }
+from_to_index = { int ~ ".." ~ int }
+to_index      = { ":" ~ int }
+from_index    = { int ~ ":" }
+
+prefix  = _{ neg }
+neg     =  { "-" }
 postfix = _{ fac }
 fac     =  { "!" }
-// Factorial
-primary = _{ bool | command | int | "(" ~ expr ~ ")" | ident | string }
-int     = @{ (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ | ASCII_DIGIT) }
+
+// New rule that represents an expression that can be indexed.
+indexable_expr = { array | command | ident | "(" ~ expr ~ ")" }
+arr            =  { indexable_expr ~ ("[" ~ (from_to_index | from_index | to_index | index) ~ "]") }
+primary        = _{ bool | arr | array | command | string | int | ident }
+int            = @{ (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ | ASCII_DIGIT) }

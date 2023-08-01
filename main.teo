@@ -9,3 +9,8 @@ if (true) {
 }
 def x(a: Number, b: Number) return(a + b);
 print(x(1, 2));
+print([0, 1, 2, 3, 4, 5][0..5]);
+print([1, 2, 3, 4][:3]);
+print([1, 2, 3, 4][3:]);
+def n() return([0, 1, 2, 3, 4, 5, 6]);
+print(n()[0..3]);
