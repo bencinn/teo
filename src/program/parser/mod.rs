@@ -113,6 +113,7 @@ pub enum Ast {
         elements: Box<Ast>,
         block: Box<Ast>,
     },
+    Fac(Box<Ast>),
 }
 
 impl fmt::Display for Ast {
@@ -261,8 +262,11 @@ fn parse_expr(pairs: Pairs<Rule>, pratt: &PrattParser<Rule>) -> Ast {
             _ => unreachable!(),
         })
         .map_postfix(|lhs, op| match op.as_rule() {
-            // Rule::fac => (1..lhs + 1).product(),
-            Rule::fac => unimplemented!(),
+            Rule::fac => Ast::BinaryOp {
+                op: "!".to_string(),
+                left: Box::new(lhs),
+                right: Box::new(Ast::Bool(false)),
+            },
             _ => unreachable!(),
         })
         .map_infix(|lhs, op, rhs| match op.as_rule() {

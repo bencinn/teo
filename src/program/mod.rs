@@ -2,7 +2,7 @@ use crate::util::shell::Shell;
 use anyhow::{anyhow, Result};
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
-use std::collections::HashMap;
+use std::{collections::HashMap, iter::Product};
 
 pub enum ReturnType {
     Ok(Data),
@@ -311,6 +311,17 @@ impl Evaluate for parser::Ast {
                     "/" => Ok(Data::Number(f1 / f2)),
                     "==" => Ok(Data::Bool(f1 == f2)),
                     "!=" => Ok(Data::Bool(f1 != f2)),
+                    "!" => Ok(Data::Number(
+                        Decimal::from_i32(
+                            (1..=if f1.is_integer() {
+                                f1.to_i32().unwrap()
+                            } else {
+                                panic!("cannot use decimal value to do factorial")
+                            })
+                                .product(),
+                        )
+                        .unwrap(),
+                    )),
                     "<" => Ok(Data::Bool(f1 < f2)),
                     ">" => Ok(Data::Bool(f1 > f2)),
                     "<=" => Ok(Data::Bool(f1 <= f2)),
