@@ -87,6 +87,14 @@ pub enum Ast {
         /// Where to access (wrapped in [`Box`])
         k: Box<Ast>,
     },
+    ArrayAccess {
+        expr: Box<Ast>,
+        whereto: Box<Ast>,
+    },
+    AstSlice {
+        from: Option<Box<Ast>>,
+        to: Option<Box<Ast>>,
+    },
     /// Boolean data type
     Bool(
         /// Bool to create
@@ -155,13 +163,68 @@ fn parse_string(s: pest::iterators::Pair<'_, Rule>) -> String {
 }
 
 fn handle_arr(primary: Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut varindex: Option<Box<Ast>> = None;
+    let mut wheretoindex: Option<Box<Ast>> = None;
     for i in primary.into_inner().into_iter() {
         match i.as_rule() {
-            Rule::indexable_expr => println!("{:?}", parse_expr(i.into_inner(), pratt)),
-            _ => {}
+            Rule::indexable_expr => varindex = Some(Box::new(parse_expr(i.into_inner(), pratt))),
+            Rule::from_to_index => {
+                let mut x: Vec<Ast> = vec![];
+                i.into_inner().into_iter().for_each(|f|
+                        // x.push(parse_expr(f.into_inner(), pratt))
+                        x.push(parse_expr(Pairs::single(f), pratt)));
+                if x.len() != 2 {
+                    unreachable!()
+                } else {
+                    wheretoindex = Some(Box::new(Ast::AstSlice {
+                        from: Some(Box::new(x[0].clone())),
+                        to: Some(Box::new(x[1].clone())),
+                    }));
+                    println!("{:?}", wheretoindex);
+                }
+            }
+            Rule::from_index => {
+                let mut x: Vec<Ast> = vec![];
+                i.into_inner().into_iter().for_each(|f|
+                        // x.push(parse_expr(f.into_inner(), pratt))
+                        x.push(parse_expr(Pairs::single(f), pratt)));
+                if x.len() != 1 {
+                    unreachable!()
+                } else {
+                    wheretoindex = Some(Box::new(Ast::AstSlice {
+                        from: Some(Box::new(x[0].clone())),
+                        to: None,
+                    }));
+                    println!("{:?}", wheretoindex);
+                }
+            }
+            Rule::to_index => {
+                let mut x: Vec<Ast> = vec![];
+                i.into_inner().into_iter().for_each(|f|
+                        // x.push(parse_expr(f.into_inner(), pratt))
+                        x.push(parse_expr(Pairs::single(f), pratt)));
+                if x.len() != 1 {
+                    unreachable!()
+                } else {
+                    wheretoindex = Some(Box::new(Ast::AstSlice {
+                        from: None,
+                        to: Some(Box::new(x[0].clone())),
+                    }));
+                    println!("{:?}", wheretoindex);
+                }
+            }
+            Rule::index => wheretoindex = Some(Box::new(parse_expr(i.into_inner(), pratt))),
+            _ => unreachable!("{:?}", i.as_rule()),
         }
     }
-    Ast::Bool(true)
+    if let (Some(v), Some(w)) = (varindex.clone(), wheretoindex.clone()) {
+        Ast::ArrayAccess {
+            expr: v,
+            whereto: w,
+        }
+    } else {
+        unreachable!("{:?} {:?}", varindex, wheretoindex)
+    }
 }
 
 fn handle_array(primary: Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
