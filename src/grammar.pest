@@ -2,7 +2,7 @@ WHITESPACE = _{ " " | "\t" | NEWLINE }
 
 program = { SOI ~ block ~ EOI }
 block   = { ((command ~ ";") | (set ~ ";") | (ifs) | (def) | (for_loop))+ }
-expr    = { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ postfix*)* }
+expr = { prefix* ~ (primary | "(" ~ expr ~ ")") ~ postfix* ~ (infix ~ prefix* ~ (primary | "(" ~ expr ~ ")") ~ postfix*)* }
 
 string      =  { "\"" ~ (raw_string | escape)* ~ "\"" }
 raw_string  =  { (!("\\" | "\"") ~ ANY)+ }
