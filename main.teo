@@ -14,6 +14,8 @@ if (x[1] == 3) {
 }
 lbozo = x[1] > 3;
 print(lbozo);
+for i <- ["Hi m\u{006F}m", "Hi m\x79m"]
+    print(i);
 def a(n: Bool){
     return(n);
 }
