@@ -1,7 +1,7 @@
 WHITESPACE = _{ " " | "\t" | NEWLINE }
 
 program = { SOI ~ block ~ EOI }
-block   = { ((command ~ ";") | (set ~ ";") | (ifs) | (def))+ }
+block   = { ((command ~ ";") | (set ~ ";") | (ifs) | (def) | (for_loop))+ }
 expr    = { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ postfix*)* }
 
 string      =  { "\"" ~ (raw_string | escape)* ~ "\"" }
@@ -16,10 +16,12 @@ escape      = _{ "\\" ~ (predefined | byte_escape | unicode) }
 
 bool = @{ "true" | "false" }
 
-command = { ident ~ "(" ~ args? ~ ")" }
-set     = { ident ~ "=" ~ expr }
-ifs     = { "if" ~ "(" ~ expr ~ ")" ~ ("{" ~ block ~ "}" | command ~ ";") }
-def     = { "def" ~ ident ~ "(" ~ defargs? ~ ")" ~ ("{" ~ block ~ "}" | command ~ ";") }
+command   = { ident ~ "(" ~ args? ~ ")" }
+set       = { primary ~ "=" ~ expr }
+ifs       = { "if" ~ "(" ~ expr ~ ")" ~ ("{" ~ block ~ "}" | command ~ ";") }
+def       = { "def" ~ ident ~ "(" ~ defargs? ~ ")" ~ ("{" ~ block ~ "}" | command ~ ";") }
+for_loop  = { "for" ~ ident ~ "<-" ~ expr ~ loop_body }
+loop_body = _{ command ~ ";" | "{" ~ block ~ "}" }
 
 args    = { expr ~ ("," ~ expr)* }
 p_type  = { "Number" | "String" | "Bool" }
@@ -33,8 +35,8 @@ alpha        =  { 'a'..'z' | 'A'..'Z' }
 digit        =  { '0'..'9' }
 ident_array  =  { alpha+ ~ ("[" ~ (from_to_index | from_index | to_index | index) ~ "]")? }
 ident        =  { alpha+ }
-comparisonop = @{ (">" | "<") ~ "="? }
-infix        = _{ add | sub | mul | div | pow | comparisonop }
+comparisonop = @{ ((">" | "<") ~ "="?) | "==" | "!=" }
+infix        = _{  comparisonop | add | sub | mul | div | pow }
 add          =  { "+" }
 sub          =  { "-" }
 mul          =  { "*" }
@@ -52,7 +54,7 @@ postfix = _{ fac }
 fac     =  { "!" }
 
 // New rule that represents an expression that can be indexed.
-indexable_expr = { array | command | ident | "(" ~ expr ~ ")" }
+indexable_expr =  { array | command | ident | "(" ~ expr ~ ")" }
 arr            =  { indexable_expr ~ ("[" ~ (from_to_index | from_index | to_index | index) ~ "]") }
-primary        = _{ bool | arr | array | command | string | int | ident }
+primary        = _{ arr | command | bool | array | string | int | ident }
 int            = @{ (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ | ASCII_DIGIT) }

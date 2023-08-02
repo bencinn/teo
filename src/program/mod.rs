@@ -92,33 +92,27 @@ impl Program {
                         parser::Ast::Set { id, expr } => {
                             let value = expr.evaluate(&self, writer);
                             match id.as_ref() {
-                                parser::Ast::ArrayCall { id: array_id, k } => {
-                                    let index = k
-                                        .evaluate(&self, writer)
-                                        .unwrap()
-                                        .as_number()
-                                        .to_usize()
-                                        .unwrap();
-
-                                    let array = self.variable.get_mut(array_id);
-                                    if let Some(array) = array {
-                                        if let Data::Array(elements) = array {
-                                            elements[index] = value.unwrap();
-                                        } else {
-                                            unrecov_err!(
-                                                shell,
-                                                "Variable {} is not an array, cannot modify!",
-                                                array_id
-                                            );
+                                parser::Ast::ArrayAccess {
+                                    expr: array_id,
+                                    whereto: k,
+                                } => {
+                                    if let parser::Ast::Identifier(id) =
+                                        &*std::rc::Rc::clone(&array_id)
+                                    {
+                                        if let Data::Array(arr) = &self.variable[id] {
+                                            let mut a = arr.clone();
+                                            a[k.evaluate(&self, writer)
+                                                .unwrap()
+                                                .as_number()
+                                                .to_usize()
+                                                .unwrap()] = value.unwrap();
+                                            self.variable.insert(id.to_string(), Data::Array(a));
                                         }
                                     } else {
-                                        unrecov_err!(
-                                            shell,
-                                            "Variable (array) not found: {}",
-                                            array_id
-                                        );
+                                        panic!("{:?} {:?}", array_id, k)
                                     }
                                 }
+
                                 _ => {
                                     self.variable.insert(id.to_string(), value.unwrap());
                                 }
@@ -285,7 +279,7 @@ impl Program {
                     }
                 }
             }
-            _ => unimplemented!(),
+            _ => unimplemented!("{:?}", &self.commands),
         }
         Ok(ReturnType::None)
     }

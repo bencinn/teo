@@ -6,6 +6,7 @@ use pest::{
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::fmt;
+use std::rc::Rc;
 
 extern crate pest;
 
@@ -88,7 +89,7 @@ pub enum Ast {
         k: Box<Ast>,
     },
     ArrayAccess {
-        expr: Box<Ast>,
+        expr: Rc<Ast>,
         whereto: Box<Ast>,
     },
     AstSlice {
@@ -219,7 +220,7 @@ fn handle_arr(primary: Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
     }
     if let (Some(v), Some(w)) = (varindex.clone(), wheretoindex.clone()) {
         Ast::ArrayAccess {
-            expr: v,
+            expr: v.into(),
             whereto: w,
         }
     } else {
@@ -268,6 +269,11 @@ fn parse_expr(pairs: Pairs<Rule>, pratt: &PrattParser<Rule>) -> Ast {
             _ => unreachable!(),
         })
         .map_infix(|lhs, op, rhs| match op.as_rule() {
+            Rule::comparisonop => Ast::BinaryOp {
+                op: op.as_str().to_string(),
+                left: Box::new(lhs),
+                right: Box::new(rhs),
+            },
             Rule::add => Ast::BinaryOp {
                 op: "+".to_string(),
                 left: Box::new(lhs),
@@ -311,6 +317,7 @@ fn handle_block(j: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -
                 ast.push(handle_ifs(p, &pratt));
             }
             Rule::def => ast.push(handle_def(p, pratt)),
+            Rule::for_loop => ast.push(handle_for_loop(p, pratt)),
             _ => {
                 unimplemented!()
             }
@@ -321,6 +328,7 @@ fn handle_block(j: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -
 fn parse_code(source: &str) -> Result<Vec<Ast>, pest::error::Error<Rule>> {
     let mut ast = vec![];
     let pratt = PrattParser::new()
+        .op(Op::infix(Rule::comparisonop, Assoc::Left))
         .op(Op::infix(Rule::add, Assoc::Left) | Op::infix(Rule::sub, Assoc::Left))
         .op(Op::infix(Rule::mul, Assoc::Left) | Op::infix(Rule::div, Assoc::Left))
         .op(Op::infix(Rule::pow, Assoc::Right))
@@ -342,6 +350,28 @@ fn parse_code(source: &str) -> Result<Vec<Ast>, pest::error::Error<Rule>> {
         }
     }
     Ok(ast)
+}
+fn handle_for_loop(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut element: Option<Ast> = None;
+    let mut elements: Option<Ast> = None;
+    let mut codeblock: Option<Ast> = None;
+    for i in p.into_inner() {
+        match i.as_rule() {
+            Rule::ident => element = Some(parse_expr(Pairs::single(i), pratt)),
+            Rule::expr => elements = Some(parse_expr(Pairs::single(i), pratt)),
+            Rule::block => codeblock = Some(Ast::Block(handle_block(i, pratt))),
+            Rule::command => codeblock = Some(Ast::Block(vec![handle_command(i, pratt)])),
+            _ => unreachable!("{:?}", i.as_rule()),
+        }
+    }
+    // Ast::Bool(true)
+    let ast = Ast::ForLoop {
+        element: Box::new(element.unwrap()),
+        elements: Box::new(elements.unwrap()),
+        block: Box::new(codeblock.unwrap()),
+    };
+    println!("{:?}", ast);
+    ast
 }
 fn handle_ifs(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
     let mut condition = Ast::Bool(true);
@@ -424,14 +454,15 @@ fn handle_set(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> 
     let mut y = None;
     for i in p.into_inner() {
         match i.as_rule() {
-            Rule::ident => x = Some(i.as_str().trim()),
+            Rule::ident => x = Some(Ast::Identifier(i.as_str().trim().to_string())),
             Rule::expr => y = Some(parse_expr(i.into_inner(), pratt)),
-            _ => unimplemented!(),
+            Rule::arr => x = Some(handle_arr(i, pratt)),
+            _ => unimplemented!("{:?}", i),
         }
     }
     if let (Some(x), Some(y)) = (x, y) {
         Ast::Set {
-            id: Box::new(Ast::Identifier(x.to_string())),
+            id: Box::new(x),
             expr: Box::new(y),
         }
     } else {
