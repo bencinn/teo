@@ -361,9 +361,6 @@ impl Evaluate for parser::Ast {
                             None => array.len() - 1,
                             _ => unimplemented!(),
                         };
-                        println!("START_INDEX {}", &start_index);
-                        println!("END_INDEX {}", &end_index);
-                        println!("ARR {:?}", &array);
 
                         // Return a slice of the array from start_index to end_index
                         Ok(Data::Array(array[start_index..=end_index].to_vec()))

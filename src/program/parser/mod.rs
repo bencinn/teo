@@ -181,7 +181,6 @@ fn handle_arr(primary: Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
                         from: Some(Box::new(x[0].clone())),
                         to: Some(Box::new(x[1].clone())),
                     }));
-                    println!("{:?}", wheretoindex);
                 }
             }
             Rule::from_index => {
@@ -196,7 +195,6 @@ fn handle_arr(primary: Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
                         from: Some(Box::new(x[0].clone())),
                         to: None,
                     }));
-                    println!("{:?}", wheretoindex);
                 }
             }
             Rule::to_index => {
@@ -211,7 +209,6 @@ fn handle_arr(primary: Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
                         from: None,
                         to: Some(Box::new(x[0].clone())),
                     }));
-                    println!("{:?}", wheretoindex);
                 }
             }
             Rule::index => wheretoindex = Some(Box::new(parse_expr(i.into_inner(), pratt))),
@@ -370,7 +367,6 @@ fn handle_for_loop(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>
         elements: Box::new(elements.unwrap()),
         block: Box::new(codeblock.unwrap()),
     };
-    println!("{:?}", ast);
     ast
 }
 fn handle_ifs(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
@@ -394,12 +390,10 @@ fn handle_ifs(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> 
     }
 }
 fn handle_def(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
-    println!("{:?}", p);
     let mut ident = "";
     let mut params = vec![];
     let mut body = vec![];
     for i in p.into_inner() {
-        println!("{:?}", i.as_rule());
         match i.as_rule() {
             Rule::ident => ident = i.as_str(),
             Rule::defargs => {
@@ -424,7 +418,6 @@ fn handle_def(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> 
         params: params,
         body: Box::new(Ast::Block(body)),
     };
-    println!("{:?}", returnast);
     returnast
 }
 fn handle_command(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
