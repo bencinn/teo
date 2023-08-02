@@ -415,7 +415,7 @@ fn handle_def(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> 
     }
     let returnast = Ast::FunctionDefinition {
         id: ident.to_string(),
-        params: params,
+        params,
         body: Box::new(Ast::Block(body)),
     };
     returnast
@@ -435,7 +435,7 @@ fn handle_command(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>)
     if let Some(i) = fn_identifier {
         Ast::FunctionCall {
             id: i.to_string(),
-            args: args,
+            args,
         }
     } else {
         unreachable!()
