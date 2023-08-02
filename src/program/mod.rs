@@ -315,6 +315,7 @@ impl Evaluate for parser::Ast {
                     ">" => Ok(Data::Bool(f1 > f2)),
                     "<=" => Ok(Data::Bool(f1 <= f2)),
                     ">=" => Ok(Data::Bool(f1 >= f2)),
+                    "^" => Ok(Data::Number(f1.powd(f2))),
                     _ => panic!("{} is not a valid binary operator", op),
                 }
             }

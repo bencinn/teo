@@ -291,8 +291,11 @@ fn parse_expr(pairs: Pairs<Rule>, pratt: &PrattParser<Rule>) -> Ast {
                 left: Box::new(lhs),
                 right: Box::new(rhs),
             },
-            // Rule::pow => (1..rhs + 1).map(|_| lhs).product(),
-            Rule::pow => unimplemented!(),
+            Rule::pow => Ast::BinaryOp {
+                op: "^".to_string(),
+                left: Box::new(lhs),
+                right: Box::new(rhs),
+            },
             _ => unreachable!(),
         })
         .parse(pairs)
