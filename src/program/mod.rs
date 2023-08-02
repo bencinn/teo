@@ -88,37 +88,31 @@ impl Program {
         match &self.commands {
             parser::Ast::Block(commands) => {
                 for command in commands {
-                    match command.1 {
+                    match command {
                         parser::Ast::Set { id, expr } => {
                             let value = expr.evaluate(&self, writer);
                             match id.as_ref() {
-                                parser::Ast::ArrayCall { id: array_id, k } => {
-                                    let index = k
-                                        .evaluate(&self, writer)
-                                        .unwrap()
-                                        .as_number()
-                                        .to_usize()
-                                        .unwrap();
-
-                                    let array = self.variable.get_mut(array_id);
-                                    if let Some(array) = array {
-                                        if let Data::Array(elements) = array {
-                                            elements[index] = value.unwrap();
-                                        } else {
-                                            unrecov_err!(
-                                                shell,
-                                                "Variable {} is not an array, cannot modify!",
-                                                array_id
-                                            );
+                                parser::Ast::ArrayAccess {
+                                    expr: array_id,
+                                    whereto: k,
+                                } => {
+                                    if let parser::Ast::Identifier(id) =
+                                        &*std::rc::Rc::clone(&array_id)
+                                    {
+                                        if let Data::Array(arr) = &self.variable[id] {
+                                            let mut a = arr.clone();
+                                            a[k.evaluate(&self, writer)
+                                                .unwrap()
+                                                .as_number()
+                                                .to_usize()
+                                                .unwrap()] = value.unwrap();
+                                            self.variable.insert(id.to_string(), Data::Array(a));
                                         }
                                     } else {
-                                        unrecov_err!(
-                                            shell,
-                                            "Variable (array) not found: {}",
-                                            array_id
-                                        );
+                                        panic!("{:?} {:?}", array_id, k)
                                     }
                                 }
+
                                 _ => {
                                     self.variable.insert(id.to_string(), value.unwrap());
                                 }
@@ -285,7 +279,7 @@ impl Program {
                     }
                 }
             }
-            _ => unimplemented!(),
+            _ => unimplemented!("{:?}", &self.commands),
         }
         Ok(ReturnType::None)
     }
@@ -333,6 +327,48 @@ impl Evaluate for parser::Ast {
                 }
                 Ok(Data::Array(array_data))
             }
+            parser::Ast::ArrayAccess { expr, whereto } => {
+                // Evaluate the array expression to get the array
+                let array = match expr.evaluate(program, writer)? {
+                    Data::Array(a) => a,
+                    _ => return Err(anyhow!("Error: expected an array")),
+                };
+
+                // Check if the whereto is a single index or a slice
+                match &**whereto {
+                    // Single index
+                    parser::Ast::Int(index) => {
+                        // Access the array element at the given index
+                        array
+                            .get(index.to_usize().unwrap())
+                            .cloned()
+                            .ok_or_else(|| anyhow!("Error: index out of bounds: {:?}", array))
+                    }
+                    // Slice
+                    parser::Ast::AstSlice { from, to } => {
+                        // Evaluate the slice indices expressions to get the start and end indices
+                        let start_index =
+                            match from.as_ref().map(|expr| expr.evaluate(program, writer)) {
+                                Some(Ok(Data::Number(n))) => n.to_usize().unwrap(),
+                                Some(Err(e)) => return Err(e),
+                                None => 0,
+                                _ => unimplemented!(),
+                            };
+                        let end_index = match to.as_ref().map(|expr| expr.evaluate(program, writer))
+                        {
+                            Some(Ok(Data::Number(n))) => n.to_usize().unwrap(),
+                            Some(Err(e)) => return Err(e),
+                            None => array.len() - 1,
+                            _ => unimplemented!(),
+                        };
+
+                        // Return a slice of the array from start_index to end_index
+                        Ok(Data::Array(array[start_index..=end_index].to_vec()))
+                    }
+                    _ => Err(anyhow!("Error: expected an index or a slice")),
+                }
+            }
+
             parser::Ast::ArrayCall { id, k } => {
                 if let Some(array) = variables.get(id) {
                     if let Data::Array(elements) = array {
@@ -356,7 +392,6 @@ impl Evaluate for parser::Ast {
                     panic!("Error: array variable not found: {}", id);
                 }
             }
-
             parser::Ast::FunctionCall { id, args } => {
                 let std_functions = program.std_commands.clone();
                 if std_functions.contains(id) {

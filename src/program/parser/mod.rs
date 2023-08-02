@@ -1,6 +1,20 @@
-use peg;
+use pest::{
+    iterators::{Pair, Pairs},
+    pratt_parser::{Assoc, Op, PrattParser},
+    Parser,
+};
 use rust_decimal::Decimal;
-use std::{collections::BTreeMap, fmt};
+use rust_decimal_macros::dec;
+use std::fmt;
+use std::rc::Rc;
+
+extern crate pest;
+
+use pest_derive::Parser;
+
+#[derive(Parser)]
+#[grammar = "grammar.pest"]
+struct MyParser;
 
 use anyhow::{anyhow, Result};
 
@@ -9,10 +23,9 @@ use anyhow::{anyhow, Result};
 /// Should have tree structure but I'm stupid so not now
 pub enum Ast {
     /// Code block
-    /// (This is also used on the top domain / parent tree)
     Block(
         /// Map of the block
-        BTreeMap<i64, Ast>,
+        Vec<Ast>,
     ),
     /// String data type
     String(String),
@@ -75,6 +88,14 @@ pub enum Ast {
         /// Where to access (wrapped in [`Box`])
         k: Box<Ast>,
     },
+    ArrayAccess {
+        expr: Rc<Ast>,
+        whereto: Box<Ast>,
+    },
+    AstSlice {
+        from: Option<Box<Ast>>,
+        to: Option<Box<Ast>>,
+    },
     /// Boolean data type
     Bool(
         /// Bool to create
@@ -117,202 +138,348 @@ impl fmt::Display for Ast {
         }
     }
 }
-peg::parser! {
-        grammar ast_parser() for str {
-        rule _() =[' ' | '\t' | '\n'] *
 
-        rule integer() -> Ast = n: $(['0' ..= '9'] +("."['0' ..= '9'] +) ?) {
-            Ast::Int(Decimal::from_str_exact(n).unwrap())
-        }
-        rule string() -> Ast = "\"" s: $([^ '"'] *) "\"" {
-            Ast::String(s.to_string())
-        }
-        rule identifier(
-        ) -> Ast = s: $(['a' ..= 'z' | 'A' ..= 'Z' | '_']['a' ..= 'z' | 'A' ..= 'Z' | '_' | '0' ..= '9'] *) {
-            Ast::Identifier(s.to_string())
-        }
-        rule array() -> Ast = "[" _ values:(expression() **("," _)) _ "]" {
-            Ast::Array(values)
-        }
-        rule array_call() -> Ast = id: identifier() _ "[" _ k: expression() _ "]" {
-            Ast::ArrayCall {
-                id: id.to_string(),
-                k: Box::new(k),
+fn parse_string(s: pest::iterators::Pair<'_, Rule>) -> String {
+    let mut str = "".to_string();
+    for i in s.into_inner() {
+        match i.as_rule() {
+            Rule::raw_string => str = str + i.as_str(),
+            Rule::unicode_hex => {
+                str = str
+                    + std::char::from_u32(u32::from_str_radix(i.as_str(), 16).unwrap())
+                        .unwrap()
+                        .to_string()
+                        .as_str()
             }
-        }
-        rule atom() -> Ast = "true" {
-            Ast::Bool(true)
-        }
-        / "false" {
-            Ast::Bool(false)
-        }
-        / integer(
-        ) / string() / identifier() rule assignment_to_elem() -> Ast = id: array_call() _ "=" _ expr: expression() {
-            Ast::Set {
-                id: Box::new(id),
-                expr: Box::new(expr),
+            Rule::byte => {
+                str = str
+                    + (i.as_str().parse::<u8>().expect("To parse") as char)
+                        .to_string()
+                        .as_str()
             }
-        }
-        rule assignment() -> Ast = id: identifier() _ "=" _ expr: expression() {
-            Ast::Set {
-                id: Box::new(Ast::Identifier(id.to_string())),
-                expr: Box::new(expr),
-            }
-        }
-        rule function_param() ->(String, String) = id: identifier() _ ":" _ idtype: identifier() {
-            (id.to_string(), idtype.to_string())
-        }
-        rule function(
-        ) -> Ast = "def" _ id: identifier(
-        ) _ "(" _ params:(function_param() **("," _)) _ ")" _ "{" _ body:(expression() **(_ ";" _)) _ ";" _ "}" {
-            let mut block = BTreeMap::new();
-            let mut k = 0;
-            for i in body {
-                block.insert(k, i);
-                k+=1;
-            }
-            Ast::FunctionDefinition {
-                id: id.to_string(),
-                params,
-                body: Box::new(Ast::Block(block)),
-            }
-        }
-        rule function_call() -> Ast = id: identifier() _ "(" _ args:(expression() **("," _)) _ ")" {
-            Ast::FunctionCall {
-                id: id.to_string(),
-                args,
-            }
-        }
-        rule comparison_op() -> String = "<=" {
-            "<=".to_string()
-        }
-        / ">=" {
-            ">=".to_string()
-        }
-        / "==" {
-            "==".to_string()
-        }
-        / "!=" {
-            "!=".to_string()
-        }
-        / "<" {
-            "<".to_string()
-        }
-        / ">" {
-            ">".to_string()
-        }
-        #[cache]
-        rule comparison() -> Ast = left: term() _ op: comparison_op() _ right: term() {
-            Ast::BinaryOp {
-                op,
-                left: Box::new(left),
-                right: Box::new(right),
-            }
-        }
-        / term(
-        ) rule ifs(
-        ) -> Ast = "if" _ "(" _ comparison: comparison() _ ")" _ "{" _ body:(expression() **(_ ";" _)) _ ";" _ "}" {
-            let mut block = BTreeMap::new();
-            let mut k = 0;
-            for i in body {
-                block.insert(k, i);
-                k+=1;
-            }
-            Ast::If {
-                condition: Box::new(comparison),
-                block: Box::new(Ast::Block(block)),
-            }
-        }
-        rule factor(
-        ) -> Ast = ifs(
-        ) / assignment_to_elem(
-        ) / assignment(
-        ) / function() / function_call() / array() / array_call() / atom() / "(" _ expr: expression() _ ")" {
-            expr
-        }
-        rule for_loop() -> Ast = "for" _ id: identifier() _ "in" _ collection: expression() _ "{" _ body:(expression() **(_ ";" _)) _ ";" _ "}" {
-            let mut block = BTreeMap::new();
-            let mut k = 0;
-            for i in body {
-                block.insert(k, i);
-                k += 1;
-            }
-            Ast::ForLoop {
-                element: Box::new(Ast::Identifier(id.to_string())),
-                elements: Box::new(collection),
-                block: Box::new(Ast::Block(block)),
-            }
-        }
-        rule term() -> Ast = left: factor() op: $(['*' | '/'])? right: term()? {
-            if let Some(op) = op {
-                Ast::BinaryOp {
-                    op: op.to_string(),
-                    left: Box::new(left),
-                    right: Box::new(right.unwrap_or(Ast::Bool(true))), // Replace None with default value
+            _ => unimplemented!("{:?}", i),
+        };
+    }
+    str
+}
+
+fn handle_arr(primary: Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut varindex: Option<Box<Ast>> = None;
+    let mut wheretoindex: Option<Box<Ast>> = None;
+    for i in primary.into_inner().into_iter() {
+        match i.as_rule() {
+            Rule::indexable_expr => varindex = Some(Box::new(parse_expr(i.into_inner(), pratt))),
+            Rule::from_to_index => {
+                let mut x: Vec<Ast> = vec![];
+                i.into_inner().into_iter().for_each(|f|
+                        // x.push(parse_expr(f.into_inner(), pratt))
+                        x.push(parse_expr(Pairs::single(f), pratt)));
+                if x.len() != 2 {
+                    unreachable!()
+                } else {
+                    wheretoindex = Some(Box::new(Ast::AstSlice {
+                        from: Some(Box::new(x[0].clone())),
+                        to: Some(Box::new(x[1].clone())),
+                    }));
                 }
-            } else {
-                left
             }
+            Rule::from_index => {
+                let mut x: Vec<Ast> = vec![];
+                i.into_inner().into_iter().for_each(|f|
+                        // x.push(parse_expr(f.into_inner(), pratt))
+                        x.push(parse_expr(Pairs::single(f), pratt)));
+                if x.len() != 1 {
+                    unreachable!()
+                } else {
+                    wheretoindex = Some(Box::new(Ast::AstSlice {
+                        from: Some(Box::new(x[0].clone())),
+                        to: None,
+                    }));
+                }
+            }
+            Rule::to_index => {
+                let mut x: Vec<Ast> = vec![];
+                i.into_inner().into_iter().for_each(|f|
+                        // x.push(parse_expr(f.into_inner(), pratt))
+                        x.push(parse_expr(Pairs::single(f), pratt)));
+                if x.len() != 1 {
+                    unreachable!()
+                } else {
+                    wheretoindex = Some(Box::new(Ast::AstSlice {
+                        from: None,
+                        to: Some(Box::new(x[0].clone())),
+                    }));
+                }
+            }
+            Rule::index => wheretoindex = Some(Box::new(parse_expr(i.into_inner(), pratt))),
+            _ => unreachable!("{:?}", i.as_rule()),
         }
+    }
+    if let (Some(v), Some(w)) = (varindex.clone(), wheretoindex.clone()) {
+        Ast::ArrayAccess {
+            expr: v.into(),
+            whereto: w,
+        }
+    } else {
+        unreachable!("{:?} {:?}", varindex, wheretoindex)
+    }
+}
 
-        / left: factor() _ op: $(['+' | '-']) _ right: term() {
-            Ast::BinaryOp {
-                op: op.to_string(),
-                left: Box::new(left),
-                right: Box::new(right),
+fn handle_array(primary: Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut x = vec![];
+    primary.into_inner().into_iter().for_each(|f| {
+        f.into_inner()
+            .into_iter()
+            .for_each(|j| x.push(parse_expr(j.into_inner(), pratt)))
+    });
+    Ast::Array(x)
+}
+
+fn parse_expr(pairs: Pairs<Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    pratt
+        .map_primary(|primary| match primary.as_rule() {
+            Rule::int => Ast::Int(Decimal::from_str_exact(&primary.as_str()).unwrap()),
+            Rule::expr => parse_expr(primary.into_inner(), pratt), // from "(" ~ expr ~ ")"
+            Rule::command => handle_command(primary, pratt),
+            Rule::ident => Ast::Identifier(primary.as_str().trim().to_string()),
+            Rule::string => Ast::String(parse_string(primary)),
+            Rule::bool => match primary.as_str() {
+                "true" => Ast::Bool(true),
+                "false" => Ast::Bool(false),
+                _ => unreachable!(),
+            },
+            Rule::array => handle_array(primary, pratt),
+            Rule::arr => handle_arr(primary, pratt),
+            _ => unreachable!(),
+        })
+        .map_prefix(|op, rhs| match op.as_rule() {
+            Rule::neg => Ast::BinaryOp {
+                op: "-".to_string(),
+                left: Box::new(Ast::Int(dec![0])),
+                right: Box::new(rhs),
+            },
+            _ => unreachable!(),
+        })
+        .map_postfix(|lhs, op| match op.as_rule() {
+            // Rule::fac => (1..lhs + 1).product(),
+            Rule::fac => unimplemented!(),
+            _ => unreachable!(),
+        })
+        .map_infix(|lhs, op, rhs| match op.as_rule() {
+            Rule::comparisonop => Ast::BinaryOp {
+                op: op.as_str().to_string(),
+                left: Box::new(lhs),
+                right: Box::new(rhs),
+            },
+            Rule::add => Ast::BinaryOp {
+                op: "+".to_string(),
+                left: Box::new(lhs),
+                right: Box::new(rhs),
+            },
+            Rule::sub => Ast::BinaryOp {
+                op: "-".to_string(),
+                left: Box::new(lhs),
+                right: Box::new(rhs),
+            },
+            Rule::mul => Ast::BinaryOp {
+                op: "*".to_string(),
+                left: Box::new(lhs),
+                right: Box::new(rhs),
+            },
+            Rule::div => Ast::BinaryOp {
+                op: "/".to_string(),
+                left: Box::new(lhs),
+                right: Box::new(rhs),
+            },
+            // Rule::pow => (1..rhs + 1).map(|_| lhs).product(),
+            Rule::pow => unimplemented!(),
+            _ => unreachable!(),
+        })
+        .parse(pairs)
+}
+fn handle_block(j: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Vec<Ast> {
+    let mut ast = vec![];
+    for p in j.into_inner() {
+        match p.as_rule() {
+            Rule::expr => {
+                ast.push(parse_expr(p.into_inner(), &pratt));
+            }
+            Rule::command => {
+                ast.push(handle_command(p, &pratt));
+            }
+            Rule::set => {
+                ast.push(handle_set(p, &pratt));
+            }
+            Rule::ifs => {
+                ast.push(handle_ifs(p, &pratt));
+            }
+            Rule::def => ast.push(handle_def(p, pratt)),
+            Rule::for_loop => ast.push(handle_for_loop(p, pratt)),
+            _ => {
+                unimplemented!()
             }
         }
-        / factor() rule expression() -> Ast = left: comparison() _ op: $(['*' | '/']) _ right: expression() {
-            Ast::BinaryOp {
-                op: op.to_string(),
-                left: Box::new(left),
-                right: Box::new(right),
+    }
+    ast
+}
+fn parse_code(source: &str) -> Result<Vec<Ast>, pest::error::Error<Rule>> {
+    let mut ast = vec![];
+    let pratt = PrattParser::new()
+        .op(Op::infix(Rule::comparisonop, Assoc::Left))
+        .op(Op::infix(Rule::add, Assoc::Left) | Op::infix(Rule::sub, Assoc::Left))
+        .op(Op::infix(Rule::mul, Assoc::Left) | Op::infix(Rule::div, Assoc::Left))
+        .op(Op::infix(Rule::pow, Assoc::Right))
+        .op(Op::prefix(Rule::neg))
+        .op(Op::postfix(Rule::fac));
+    let pairs = MyParser::parse(Rule::program, source)?;
+    for pair in pairs {
+        match pair.as_rule() {
+            Rule::program => {
+                for j in pair.into_inner() {
+                    match j.as_rule() {
+                        Rule::block => ast.append(&mut handle_block(j, &pratt)),
+                        Rule::EOI => {}
+                        _ => unreachable!(),
+                    }
+                }
             }
+            _ => unimplemented!(),
         }
-        / left: comparison() _ op: $(['+' | '-']) _ right: expression() {
-            Ast::BinaryOp {
-                op: op.to_string(),
-                left: Box::new(left),
-                right: Box::new(right),
+    }
+    Ok(ast)
+}
+fn handle_for_loop(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut element: Option<Ast> = None;
+    let mut elements: Option<Ast> = None;
+    let mut codeblock: Option<Ast> = None;
+    for i in p.into_inner() {
+        match i.as_rule() {
+            Rule::ident => element = Some(parse_expr(Pairs::single(i), pratt)),
+            Rule::expr => elements = Some(parse_expr(Pairs::single(i), pratt)),
+            Rule::block => codeblock = Some(Ast::Block(handle_block(i, pratt))),
+            Rule::command => codeblock = Some(Ast::Block(vec![handle_command(i, pratt)])),
+            _ => unreachable!("{:?}", i.as_rule()),
+        }
+    }
+    // Ast::Bool(true)
+    let ast = Ast::ForLoop {
+        element: Box::new(element.unwrap()),
+        elements: Box::new(elements.unwrap()),
+        block: Box::new(codeblock.unwrap()),
+    };
+    ast
+}
+fn handle_ifs(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut condition = Ast::Bool(true);
+    let mut block = vec![];
+    for i in p.into_inner() {
+        match i.as_rule() {
+            Rule::expr => {
+                condition = parse_expr(i.into_inner(), pratt);
             }
-        }
-        / for_loop()
-        / comparison() pub rule program() -> Ast = _ exprs:(expression() **(";" _)) _ ";" ? _ {
-            let mut tree = BTreeMap::new();
-            let mut i = 0;
-            for expr in exprs {
-                i+=1;
-                tree.insert(i, expr);
+            Rule::block => {
+                block.append(&mut handle_block(i, pratt));
             }
-            Ast::Block(tree)
+            Rule::command => block.push(handle_command(i, pratt)),
+            _ => unreachable!(),
         }
+    }
+    Ast::If {
+        condition: Box::new(condition),
+        block: Box::new(Ast::Block(block)),
+    }
+}
+fn handle_def(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut ident = "";
+    let mut params = vec![];
+    let mut body = vec![];
+    for i in p.into_inner() {
+        match i.as_rule() {
+            Rule::ident => ident = i.as_str(),
+            Rule::defargs => {
+                for j in i.into_inner() {
+                    let mut p_name = String::new();
+                    let mut p_type = String::new();
+                    j.into_inner().into_iter().for_each(|f| match f.as_rule() {
+                        Rule::ident => p_name = f.as_str().trim().to_string(),
+                        Rule::p_type => p_type = f.as_str().to_string(),
+                        _ => unreachable!(),
+                    });
+                    params.push((p_name, p_type));
+                }
+            }
+            Rule::command => body.push(handle_command(i, pratt)),
+            Rule::block => body.append(&mut handle_block(i, pratt)),
+            _ => unreachable!(),
+        }
+    }
+    let returnast = Ast::FunctionDefinition {
+        id: ident.to_string(),
+        params: params,
+        body: Box::new(Ast::Block(body)),
+    };
+    returnast
+}
+fn handle_command(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut fn_identifier = None;
+    let mut args = vec![];
+    for i in p.into_inner() {
+        match i.as_rule() {
+            Rule::ident => fn_identifier = Some(i.as_str()),
+            Rule::args => i
+                .into_inner()
+                .for_each(|f| args.push(parse_expr(f.into_inner(), pratt))),
+            _ => unreachable!(),
+        }
+    }
+    if let Some(i) = fn_identifier {
+        Ast::FunctionCall {
+            id: i.to_string(),
+            args: args,
+        }
+    } else {
+        unreachable!()
+    }
+}
+
+fn handle_set(p: pest::iterators::Pair<'_, Rule>, pratt: &PrattParser<Rule>) -> Ast {
+    let mut x = None;
+    let mut y = None;
+    for i in p.into_inner() {
+        match i.as_rule() {
+            Rule::ident => x = Some(Ast::Identifier(i.as_str().trim().to_string())),
+            Rule::expr => y = Some(parse_expr(i.into_inner(), pratt)),
+            Rule::arr => x = Some(handle_arr(i, pratt)),
+            _ => unimplemented!("{:?}", i),
+        }
+    }
+    if let (Some(x), Some(y)) = (x, y) {
+        Ast::Set {
+            id: Box::new(x),
+            expr: Box::new(y),
+        }
+    } else {
+        unreachable!()
     }
 }
 
 impl Ast {
     /// Parse code from string
     /// Return [`Err`] if can't parse, else Return [`Result`]<[`Ast`]>
-    /// # Example
-    /// ### Parsing identifier
-    /// ```rust
-    /// # use teolang::program::parser::Ast;
-    /// # use rust_decimal_macros::dec;
-    /// # use std::collections::BTreeMap;
-    /// assert_eq!(Ast::parse_code("x").unwrap(), Ast::Block(BTreeMap::from([(1, Ast::Identifier("x".to_string()))])));
-    /// ```
-    ///
-    /// ### Parsing set
-    /// ```rust
-    /// # use teolang::program::parser::Ast;
-    /// # use rust_decimal_macros::dec;
-    /// # use std::collections::BTreeMap;
-    /// assert_eq!(Ast::parse_code("x = 0;").unwrap(), Ast::Block(BTreeMap::from([(1, Ast::Set {id: Box::new(Ast::Identifier("x".to_string())), expr: Box::new(Ast::Int(dec!(0)))})])));
-    /// assert_eq!(Ast::parse_code("x").unwrap(), Ast::Block(BTreeMap::from([(1, Ast::Identifier("x".to_string()))])));
-    /// ```
-
+    /// Example
+    /// if let Ok(ast) = parse_code(r#"
+    ///     let input = r#"
+    ///    n = 3;
+    ///    n = 2;
+    ///    i(n);
+    ///    x = [5, 7, 3];
+    ///   print(custom_pow(3, 4));
+    ///   return(0);
+    ///   print("Unreachable??");
+    ///  ");
     pub fn parse_code(block: &str) -> Result<Ast> {
-        match ast_parser::program(block) {
-            Ok(ast) => Ok(ast),
+        match parse_code(block) {
+            Ok(ast) => Ok(Ast::Block(ast)),
             Err(e) => Err(anyhow!(e)),
         }
     }
