@@ -82,12 +82,6 @@ pub enum Ast {
         Vec<Ast>,
     ),
     /// Accessing array field
-    ArrayCall {
-        /// [`Ast::Identifier`] of the array name
-        id: String,
-        /// Where to access (wrapped in [`Box`])
-        k: Box<Ast>,
-    },
     ArrayAccess {
         expr: Rc<Ast>,
         whereto: Box<Ast>,
@@ -113,7 +107,6 @@ pub enum Ast {
         elements: Box<Ast>,
         block: Box<Ast>,
     },
-    Fac(Box<Ast>),
 }
 
 impl fmt::Display for Ast {
