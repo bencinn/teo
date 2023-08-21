@@ -51,3 +51,6 @@ join = []
 [[bin]]
 name = "teo"
 path = "src/main.rs"
+
+[profile.release]
+panic = 'abort'
