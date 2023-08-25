@@ -233,7 +233,7 @@ impl Program {
                                             function: self.function.clone(),
                                             std_commands: self.std_commands.clone(),
                                         };
-                                        if let Ok(returncode) = program.run_loop(writer, shell) {
+                                        if let Ok(_returncode) = program.run_loop(writer, shell) {
                                         } else {
                                             panic!("Function `{}` panicked!", id);
                                         }

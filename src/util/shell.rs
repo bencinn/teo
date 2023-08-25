@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // Shell implementation from rust-lang/cargo/src/cargo/core/shell.rs
 use std::fmt;
 use std::io::prelude::*;
