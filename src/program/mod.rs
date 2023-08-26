@@ -56,6 +56,8 @@ macro_rules! matchcmd {
             $(
                 #[cfg(feature = $function)]
                 $function => $body,
+                #[cfg(not(feature = $function))]
+                $function => Err(anyhow!("Function {} is not enabled!", $function)),
             )+
             _ => Err(anyhow!($errmessage)),
         }

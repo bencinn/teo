@@ -40,7 +40,7 @@ features = [
 ]
 
 [features]
-default = ["print", "return", "input", "split", "inputf"]
+default = ["print", "return", "input"]
 print = []
 return = []
 input = []
