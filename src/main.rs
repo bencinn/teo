@@ -33,7 +33,6 @@ fn main() -> Result<()> {
                 let _ = shell.error("File error");
                 format!("Failed to read file from {}", args.file_name)
             })?
-            .replace("\r\n", "")
             .as_str(),
     )
     .with_context(|| {
